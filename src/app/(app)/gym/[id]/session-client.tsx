@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
 import { Plus, Trash2, Timer, Play, Pause, Check, X, SkipForward } from 'lucide-react'
+import { toast } from 'sonner'
 
 type SessionExerciseWithDetails = {
   id: string
@@ -171,7 +172,7 @@ export function SessionPageClient({
 
   async function handleAddExercise(exerciseId: string) {
     const maxOrder = exercises.length
-    const { data: se } = await supabase
+    const { data: se, error } = await supabase
       .from('session_exercises')
       .insert({
         session_id: session.id,
@@ -180,6 +181,11 @@ export function SessionPageClient({
       })
       .select('*, exercises(name, muscle_group, default_rest_seconds)')
       .single()
+
+    if (error) {
+      toast.error(error.message)
+      return
+    }
 
     if (se) {
       setExercises((prev) => [...prev, se])
@@ -215,6 +221,7 @@ export function SessionPageClient({
         details: error.details,
         hint: error.hint,
       })
+      toast.error(error.message)
       setSaving(false)
       return
     }
@@ -224,6 +231,7 @@ export function SessionPageClient({
     }
 
     setSaving(false)
+    toast.success('Session saved')
     router.refresh()
   }
 

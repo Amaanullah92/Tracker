@@ -7,6 +7,7 @@ import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
 import { ChevronLeft, ChevronRight } from 'lucide-react'
 import { todayPKT, pktDayOfWeek, isSundayPKT, isTodayPKT } from '@/lib/pkt-utils'
+import { toast } from 'sonner'
 
 const PRAYERS = ['fajr', 'zuhr', 'asr', 'maghrib', 'isha'] as const
 type Prayer = (typeof PRAYERS)[number]
@@ -107,6 +108,8 @@ export function TodayClient({
 
   async function handleSave() {
     setSaving(true)
+    let hasError = false
+
     for (const habit of habits) {
       if (isGym(habit) && isSundayPKT(logDate)) continue
 
@@ -120,7 +123,10 @@ export function TodayClient({
         .from('habit_logs')
         .upsert(payload, { onConflict: 'habit_id, log_date' })
 
-      if (error) console.error(error)
+      if (error) {
+        console.error(error)
+        hasError = true
+      }
     }
 
     if (bodyWeightInput) {
@@ -138,11 +144,21 @@ export function TodayClient({
             },
             { onConflict: 'user_id, log_date' },
           )
-        if (error) console.error(error)
+        if (error) {
+          console.error(error)
+          hasError = true
+        }
       }
     }
 
     setSaving(false)
+
+    if (hasError) {
+      toast.error('Failed to save some entries')
+    } else {
+      toast.success('Saved')
+    }
+
     router.refresh()
   }
 

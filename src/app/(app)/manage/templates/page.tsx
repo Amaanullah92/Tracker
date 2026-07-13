@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { WorkoutDay, WorkoutDayExercise, Exercise } from '@/lib/types'
 import { Plus, Pencil, GripVertical, X } from 'lucide-react'
+import { toast } from 'sonner'
 
 export default function ManageTemplatesPage() {
   const [templates, setTemplates] = useState<(WorkoutDay & { exercises: (WorkoutDayExercise & { name?: string })[] })[]>([])
@@ -50,33 +51,53 @@ export default function ManageTemplatesPage() {
   async function handleCreateName(form: FormData) {
     const name = form.get('name') as string
     const weekday = form.get('weekday') as string
-    await supabase.from('workout_days').insert({
+    const { error } = await supabase.from('workout_days').insert({
       name,
       scheduled_weekday: weekday ? parseInt(weekday) : null,
       sort_order: templates.length + 1,
     })
+    if (error) {
+      toast.error(error.message)
+      return
+    }
+    toast.success('Template created')
     setShowForm(false)
     load()
   }
 
   async function handleDeleteTemplate(id: string) {
-    await supabase.from('workout_days').delete().eq('id', id)
+    const { error } = await supabase.from('workout_days').delete().eq('id', id)
+    if (error) {
+      toast.error(error.message)
+      return
+    }
+    toast.success('Template deleted')
     load()
   }
 
   async function handleAddExercise(templateId: string, exerciseId: string) {
     const tpl = templates.find((t) => t.id === templateId)
     const maxOrder = tpl ? tpl.exercises.length : 0
-    await supabase.from('workout_day_exercises').insert({
+    const { error } = await supabase.from('workout_day_exercises').insert({
       workout_day_id: templateId,
       exercise_id: exerciseId,
       sort_order: maxOrder,
     })
+    if (error) {
+      toast.error(error.message)
+      return
+    }
+    toast.success('Exercise added')
     load()
   }
 
   async function handleRemoveExercise(id: string) {
-    await supabase.from('workout_day_exercises').delete().eq('id', id)
+    const { error } = await supabase.from('workout_day_exercises').delete().eq('id', id)
+    if (error) {
+      toast.error(error.message)
+      return
+    }
+    toast.success('Exercise removed')
     load()
   }
 

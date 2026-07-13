@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { Exercise } from '@/lib/types'
 import { Plus, Pencil, Trash2 } from 'lucide-react'
+import { toast } from 'sonner'
 
 export default function ManageExercisesPage() {
   const [exercises, setExercises] = useState<Exercise[]>([])
@@ -36,19 +37,34 @@ export default function ManageExercisesPage() {
       default_rest_seconds: rest ? parseInt(rest) : null,
     }
 
+    let error: { message: string } | null = null
+
     if (editing) {
-      await supabase.from('exercises').update(payload).eq('id', editing.id)
+      const res = await supabase.from('exercises').update(payload).eq('id', editing.id)
+      error = res.error
     } else {
-      await supabase.from('exercises').insert(payload)
+      const res = await supabase.from('exercises').insert(payload)
+      error = res.error
     }
 
+    if (error) {
+      toast.error(error.message)
+      return
+    }
+
+    toast.success(editing ? 'Exercise updated' : 'Exercise created')
     setEditing(null)
     setShowForm(false)
     load()
   }
 
   async function handleDelete(id: string) {
-    await supabase.from('exercises').update({ is_active: false }).eq('id', id)
+    const { error } = await supabase.from('exercises').update({ is_active: false }).eq('id', id)
+    if (error) {
+      toast.error(error.message)
+      return
+    }
+    toast.success('Exercise deleted')
     load()
   }
 

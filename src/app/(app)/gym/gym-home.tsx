@@ -5,6 +5,7 @@ import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
 import { Dumbbell, Plus, Scale } from 'lucide-react'
 import { pktDayOfWeek } from '@/lib/pkt-utils'
+import { toast } from 'sonner'
 
 type WorkoutDayWithExercises = {
   id: string
@@ -55,6 +56,7 @@ export function GymHome({
 
     if (error || !session) {
       console.error(error)
+      toast.error(error?.message ?? 'Failed to start session')
       setStarting(false)
       return
     }
@@ -79,10 +81,15 @@ export function GymHome({
 
   async function handleSaveWeight() {
     if (!weight) return
-    await supabase.from('body_weight_logs').upsert(
+    const { error } = await supabase.from('body_weight_logs').upsert(
       { log_date: today, weight_kg: parseFloat(weight) },
       { onConflict: 'user_id, log_date' },
     )
+    if (error) {
+      toast.error(error.message)
+      return
+    }
+    toast.success('Weight saved')
     setShowWeight(false)
     router.refresh()
   }

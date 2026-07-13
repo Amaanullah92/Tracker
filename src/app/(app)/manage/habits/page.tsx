@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { FieldSchema, Habit } from '@/lib/types'
 import { Plus, Pencil, X, Trash2, ChevronUp, ChevronDown } from 'lucide-react'
+import { toast } from 'sonner'
 
 export default function ManageHabitsPage() {
   const [habits, setHabits] = useState<Habit[]>([])
@@ -36,7 +37,7 @@ export default function ManageHabitsPage() {
       return
     }
 
-    await supabase.from('habits').insert({
+    const { error } = await supabase.from('habits').insert({
       name,
       description: desc || null,
       field_schema: schema,
@@ -46,6 +47,11 @@ export default function ManageHabitsPage() {
       is_active: true,
       sort_order: sortOrder,
     })
+    if (error) {
+      toast.error(error.message)
+      return
+    }
+    toast.success('Habit created')
     setShowCreate(false)
     load()
   }
@@ -60,7 +66,7 @@ export default function ManageHabitsPage() {
       return
     }
 
-    await supabase.from('habits').update({
+    const { error } = await supabase.from('habits').update({
       name,
       description: (form.get('description') as string) || null,
       field_schema: schema,
@@ -70,12 +76,22 @@ export default function ManageHabitsPage() {
       is_active: form.get('is_active') === 'on',
       sort_order: parseInt(form.get('sort_order') as string) || 1,
     }).eq('id', id)
+    if (error) {
+      toast.error(error.message)
+      return
+    }
+    toast.success('Habit updated')
     setEditingId(null)
     load()
   }
 
   async function handleDelete(id: string) {
-    await supabase.from('habits').delete().eq('id', id)
+    const { error } = await supabase.from('habits').delete().eq('id', id)
+    if (error) {
+      toast.error(error.message)
+      return
+    }
+    toast.success('Habit deleted')
     load()
   }
 
