@@ -1,5 +1,22 @@
-import { FieldSchema } from './types'
+import { FieldSchema, HabitLog } from './types'
 import { todayPKT } from './pkt-utils'
+
+export const PRAYER_NAMES = ['fajr', 'zuhr', 'asr', 'maghrib', 'isha'] as const
+
+export function extractPrayerLogs(
+  logs: Pick<HabitLog, 'log_date' | 'values'>[],
+  prayer: string,
+): Pick<HabitLog, 'log_date' | 'values'>[] {
+  return logs
+    .map((log) => {
+      const prayers = (log.values as { prayers?: Record<string, Record<string, unknown>> })?.prayers
+      if (!prayers) return null
+      const vals = prayers[prayer]
+      if (!vals) return null
+      return { log_date: log.log_date, values: vals as Record<string, unknown> }
+    })
+    .filter((l): l is Pick<HabitLog, 'log_date' | 'values'> => l !== null)
+}
 
 export function epley1RM(weight: number, reps: number): number {
   if (reps === 1) return weight

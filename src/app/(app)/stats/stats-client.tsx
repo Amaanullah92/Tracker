@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react'
 import { Habit, Exercise, HabitLog, BodyWeightLog } from '@/lib/types'
 import { createClient } from '@/lib/supabase/client'
 import { computeStreak } from '@/lib/streak-engine'
-import { getChartableFields, getChartTypeForField, dateRangeDates } from '@/lib/analytics-utils'
+import { getChartableFields, getChartTypeForField, dateRangeDates, extractPrayerLogs, PRAYER_NAMES } from '@/lib/analytics-utils'
 import { CompletionChart } from '@/components/analytics/completion-chart'
 import { TrendChart } from '@/components/analytics/trend-chart'
 import { DistributionChart } from '@/components/analytics/distribution-chart'
@@ -113,54 +113,95 @@ export function StatsClient({
               </div>
             </div>
 
-            {chartableFields.length === 0 && (
-              <p className="text-xs text-text-secondary">No chartable fields</p>
+            {habit.name === 'Namaz' ? (
+              <div className="space-y-3">
+                {PRAYER_NAMES.map((prayer) => {
+                  const prayerLogs = extractPrayerLogs(logs, prayer)
+                  return (
+                    <div key={prayer} className="rounded-lg bg-surface-elevated px-3 py-2.5">
+                      <p className="mb-2 text-xs font-semibold capitalize text-text-secondary">{prayer}</p>
+                      <div className="space-y-2">
+                        <div>
+                          <p className="mb-0.5 text-[11px] text-text-tertiary">Status</p>
+                          <DistributionChart
+                            logs={prayerLogs}
+                            selectKey="status"
+                            options={['Prayed', 'Not Prayed']}
+                          />
+                        </div>
+                        <div>
+                          <p className="mb-0.5 text-[11px] text-text-tertiary">With Jamat?</p>
+                          <CompletionChart
+                            logs={prayerLogs}
+                            completionField="jamat"
+                            streakDirection={habit.streak_direction}
+                          />
+                        </div>
+                        <div>
+                          <p className="mb-0.5 text-[11px] text-text-tertiary">Completeness</p>
+                          <DistributionChart
+                            logs={prayerLogs}
+                            selectKey="completeness"
+                            options={['Full', 'Partial', 'Farz Only']}
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+            ) : (
+              <>
+                {chartableFields.length === 0 && (
+                  <p className="text-xs text-text-secondary">No chartable fields</p>
+                )}
+
+                {chartableFields.map((field) => {
+                  const chartType = getChartTypeForField(field)
+
+                  if (chartType === 'completion') {
+                    return (
+                      <div key={field.key} className="mb-3">
+                        <p className="mb-1 font-label-caps text-label-caps text-text-secondary">{field.label}</p>
+                        <CompletionChart
+                          logs={logs}
+                          completionField={field.key}
+                          streakDirection={habit.streak_direction}
+                        />
+                      </div>
+                    )
+                  }
+
+                  if (chartType === 'trend' && field.type === 'number') {
+                    return (
+                      <div key={field.key} className="mb-3">
+                        <p className="mb-1 font-label-caps text-label-caps text-text-secondary">{field.label}</p>
+                        <TrendChart
+                          logs={logs}
+                          valueKey={field.key}
+                          label={field.label}
+                        />
+                      </div>
+                    )
+                  }
+
+                  if (chartType === 'distribution' && field.type === 'select') {
+                    return (
+                      <div key={field.key} className="mb-3">
+                        <p className="mb-1 font-label-caps text-label-caps text-text-secondary">{field.label}</p>
+                        <DistributionChart
+                          logs={logs}
+                          selectKey={field.key}
+                          options={field.options ?? []}
+                        />
+                      </div>
+                    )
+                  }
+
+                  return null
+                })}
+              </>
             )}
-
-            {chartableFields.map((field) => {
-              const chartType = getChartTypeForField(field)
-
-              if (chartType === 'completion') {
-                return (
-                  <div key={field.key} className="mb-3">
-                    <p className="mb-1 font-label-caps text-label-caps text-text-secondary">{field.label}</p>
-                    <CompletionChart
-                      logs={logs}
-                      completionField={field.key}
-                      streakDirection={habit.streak_direction}
-                    />
-                  </div>
-                )
-              }
-
-              if (chartType === 'trend' && field.type === 'number') {
-                return (
-                  <div key={field.key} className="mb-3">
-                    <p className="mb-1 font-label-caps text-label-caps text-text-secondary">{field.label}</p>
-                    <TrendChart
-                      logs={logs}
-                      valueKey={field.key}
-                      label={field.label}
-                    />
-                  </div>
-                )
-              }
-
-              if (chartType === 'distribution' && field.type === 'select') {
-                return (
-                  <div key={field.key} className="mb-3">
-                    <p className="mb-1 font-label-caps text-label-caps text-text-secondary">{field.label}</p>
-                    <DistributionChart
-                      logs={logs}
-                      selectKey={field.key}
-                      options={field.options ?? []}
-                    />
-                  </div>
-                )
-              }
-
-              return null
-            })}
           </div>
         )
       })}
