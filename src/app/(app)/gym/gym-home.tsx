@@ -6,6 +6,8 @@ import { useRouter } from 'next/navigation'
 import { Dumbbell, Plus, Scale } from 'lucide-react'
 import { pktDayOfWeek } from '@/lib/pkt-utils'
 import { toast } from 'sonner'
+import { shouldQueue, fetchBaseVersion } from '@/lib/offline'
+import { enqueue } from '@/lib/db-queue'
 
 type WorkoutDayWithExercises = {
   id: string
@@ -26,13 +28,15 @@ export function GymHome({
   templates,
   recentSessions,
   today,
+  userId,
   bodyWeightToday,
 }: {
   suggested: WorkoutDayWithExercises | null
   templates: WorkoutDayWithExercises[]
   recentSessions: { id: string; session_date: string; notes: string | null }[]
   today: string
-  bodyWeightToday: { id: string; weight_kg: number } | null
+  userId: string
+  bodyWeightToday: { id: string; weight_kg: number; updated_at: string } | null
 }) {
   const [showStart, setShowStart] = useState(false)
   const [showWeight, setShowWeight] = useState(!bodyWeightToday)
@@ -81,14 +85,33 @@ export function GymHome({
 
   async function handleSaveWeight() {
     if (!weight) return
+
     const { error } = await supabase.from('body_weight_logs').upsert(
       { log_date: today, weight_kg: parseFloat(weight) },
       { onConflict: 'user_id, log_date' },
     )
+
     if (error) {
-      toast.error(error.message)
+      if (shouldQueue(error)) {
+        const baseVersion = await fetchBaseVersion(
+          'body_weight_logs',
+          { log_date: today },
+          bodyWeightToday?.updated_at ?? null,
+        )
+        await enqueue({
+          type: 'body_weight',
+          action: 'upsert',
+          payload: { user_id: userId, log_date: today, weight_kg: parseFloat(weight) },
+          targetKey: { log_date: today },
+          baseVersion,
+        })
+        toast.info('Weight saved offline')
+      } else {
+        toast.error(error.message)
+      }
       return
     }
+
     toast.success('Weight saved')
     setShowWeight(false)
     router.refresh()

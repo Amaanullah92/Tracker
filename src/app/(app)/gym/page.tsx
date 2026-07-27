@@ -1,4 +1,5 @@
 import { createClient } from '@/lib/supabase/server'
+import { redirect } from 'next/navigation'
 import { GymHome } from './gym-home'
 import { todayPKT, pktDayOfWeek } from '@/lib/pkt-utils'
 
@@ -6,6 +7,9 @@ export const dynamic = 'force-dynamic'
 
 export default async function GymPage() {
   const supabase = await createClient()
+
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) redirect('/auth/login')
 
   const today = todayPKT()
   const weekday = pktDayOfWeek(today)
@@ -46,6 +50,7 @@ export default async function GymPage() {
       templates={templatesWithExercises}
       recentSessions={recentSessions ?? []}
       today={today}
+      userId={user!.id}
       bodyWeightToday={todayLog ?? null}
     />
   )

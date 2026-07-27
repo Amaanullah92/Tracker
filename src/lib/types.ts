@@ -30,6 +30,7 @@ export type HabitLog = {
   values: Record<string, unknown>
   logged_at: string
   auto_marked: boolean
+  updated_at: string
 }
 
 export type Exercise = {
@@ -82,6 +83,7 @@ export type Set = {
   set_number: number
   weight_kg: number
   reps: number
+  updated_at: string
 }
 
 export type BodyWeightLog = {
@@ -90,4 +92,5 @@ export type BodyWeightLog = {
   log_date: string
   weight_kg: number
   logged_at: string
+  updated_at: string
 }

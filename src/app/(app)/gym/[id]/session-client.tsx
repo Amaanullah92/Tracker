@@ -5,6 +5,8 @@ import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
 import { Plus, Trash2, Timer, Play, Pause, Check, X, SkipForward } from 'lucide-react'
 import { toast } from 'sonner'
+import { shouldQueue } from '@/lib/offline'
+import { enqueue } from '@/lib/db-queue'
 
 type SessionExerciseWithDetails = {
   id: string
@@ -26,6 +28,7 @@ type Set = {
   set_number: number
   weight_kg: number
   reps: number
+  updated_at: string
 }
 
 export function SessionPageClient({
@@ -110,6 +113,7 @@ export function SessionPageClient({
       set_number: currentSets.length + 1,
       weight_kg: parseFloat(vals.weight),
       reps: parseInt(vals.reps),
+      updated_at: '',
     }
 
     setSets((prev) => ({
@@ -215,6 +219,22 @@ export function SessionPageClient({
     })
 
     if (error) {
+      if (shouldQueue(error)) {
+        const baseVersion: string | null | 'UNKNOWN' = initialSets.length > 0
+          ? initialSets.reduce<string | null>((latest, s) => !latest || s.updated_at > latest ? s.updated_at : latest, null)
+          : 'UNKNOWN'
+        await enqueue({
+          type: 'gym_set',
+          action: 'upsert',
+          payload: { p_session_id: session.id, p_sets: allSets },
+          targetKey: { session_id: session.id },
+          baseVersion,
+        })
+        setSaving(false)
+        toast.info('Session saved offline')
+        return
+      }
+
       console.error('Failed to save sets atomically:', {
         message: error.message,
         code: error.code,

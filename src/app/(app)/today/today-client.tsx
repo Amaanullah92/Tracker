@@ -8,6 +8,8 @@ import { useRouter } from 'next/navigation'
 import { ChevronLeft, ChevronRight } from 'lucide-react'
 import { todayPKT, pktDayOfWeek, isSundayPKT, isTodayPKT } from '@/lib/pkt-utils'
 import { toast } from 'sonner'
+import { shouldQueue, fetchBaseVersion } from '@/lib/offline'
+import { enqueue } from '@/lib/db-queue'
 
 const PRAYERS = ['fajr', 'zuhr', 'asr', 'maghrib', 'isha'] as const
 type Prayer = (typeof PRAYERS)[number]
@@ -49,12 +51,16 @@ export function TodayClient({
   habits,
   logsMap,
   logDate,
+  userId,
   bodyWeight,
+  bodyWeightUpdatedAt,
 }: {
   habits: Habit[]
   logsMap: Map<string, HabitLog>
   logDate: string
+  userId: string
   bodyWeight: number | null
+  bodyWeightUpdatedAt: string | null
 }) {
   const [saving, setSaving] = useState(false)
   const [bodyWeightInput, setBodyWeightInput] = useState(
@@ -78,8 +84,11 @@ export function TodayClient({
   const router = useRouter()
   const supabase = createClient()
 
+  const [dirty, setDirty] = useState<Set<string>>(new Set())
+
   function handleChange(habitId: string, fieldValues: Record<string, unknown>) {
     setValues((prev) => ({ ...prev, [habitId]: fieldValues }))
+    setDirty((prev) => new Set(prev).add(habitId))
   }
 
   function handlePrayerChange(
@@ -100,6 +109,7 @@ export function TodayClient({
         },
       }
     })
+    setDirty((prev) => new Set(prev).add(habitId))
   }
 
   function navigateDate(newDate: string) {
@@ -109,9 +119,11 @@ export function TodayClient({
   async function handleSave() {
     setSaving(true)
     let hasError = false
+    let queuedCount = 0
 
     for (const habit of habits) {
       if (isGym(habit) && isSundayPKT(logDate)) continue
+      if (!dirty.has(habit.id)) continue
 
       const payload = {
         habit_id: habit.id,
@@ -124,27 +136,53 @@ export function TodayClient({
         .upsert(payload, { onConflict: 'habit_id, log_date' })
 
       if (error) {
-        console.error(error)
-        hasError = true
+        if (shouldQueue(error)) {
+          const existingLog = logsMap.get(habit.id)
+          await enqueue({
+            type: 'habit_log',
+            action: 'upsert',
+            payload,
+            targetKey: { habit_id: habit.id, log_date: logDate },
+            baseVersion: existingLog?.updated_at ?? 'UNKNOWN',
+          })
+          queuedCount++
+        } else {
+          console.error(error)
+          hasError = true
+        }
       }
     }
 
-    if (bodyWeightInput) {
-      const {
-        data: { user },
-      } = await supabase.auth.getUser()
-      if (user) {
-        const { error } = await supabase
-          .from('body_weight_logs')
-          .upsert(
-            {
-              user_id: user.id,
-              log_date: logDate,
-              weight_kg: parseFloat(bodyWeightInput),
-            },
-            { onConflict: 'user_id, log_date' },
+    const bodyWeightChanged = bodyWeight !== null
+      ? parseFloat(bodyWeightInput) !== bodyWeight
+      : bodyWeightInput !== ''
+
+    if (bodyWeightInput && bodyWeightChanged) {
+      const { error } = await supabase
+        .from('body_weight_logs')
+        .upsert(
+          {
+            log_date: logDate,
+            weight_kg: parseFloat(bodyWeightInput),
+          },
+          { onConflict: 'user_id, log_date' },
+        )
+      if (error) {
+        if (shouldQueue(error)) {
+          const baseVersion = await fetchBaseVersion(
+            'body_weight_logs',
+            { user_id: userId, log_date: logDate },
+            bodyWeightUpdatedAt,
           )
-        if (error) {
+          await enqueue({
+            type: 'body_weight',
+            action: 'upsert',
+            payload: { user_id: userId, log_date: logDate, weight_kg: parseFloat(bodyWeightInput) },
+            targetKey: { user_id: userId, log_date: logDate },
+            baseVersion,
+          })
+          queuedCount++
+        } else {
           console.error(error)
           hasError = true
         }
@@ -155,11 +193,12 @@ export function TodayClient({
 
     if (hasError) {
       toast.error('Failed to save some entries')
+    } else if (queuedCount > 0) {
+      toast.info(`${queuedCount} ${queuedCount === 1 ? 'entry' : 'entries'} saved offline`)
     } else {
       toast.success('Saved')
+      router.refresh()
     }
-
-    router.refresh()
   }
 
   return (
