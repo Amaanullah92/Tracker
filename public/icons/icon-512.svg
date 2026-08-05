@@ -1,4 +1,17 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512">
-  <rect width="512" height="512" rx="64" fill="#166534"/>
-  <text x="256" y="310" font-family="system-ui" font-size="200" font-weight="bold" fill="white" text-anchor="middle">T</text>
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 192 192" fill="none">
+  <rect width="192" height="192" rx="40" fill="#141210"/>
+  <g transform="scale(4)">
+    <path
+      d="M24 4c-3.2 5.2-10.6 11-10.6 21.4a10.6 10.6 0 0 0 21.2 0C34.6 15 27.2 9.2 24 4Z"
+      fill="#FF6B35"
+    />
+    <path
+      d="M24 15.5c-2.2 3.4-6.6 7.4-6.6 12.4a6.6 6.6 0 0 0 13.2 0c0-5-4.4-9-6.6-12.4Z"
+      fill="#1A0D06"
+    />
+    <path
+      d="M24 34.5a6.6 6.6 0 0 0 6.6-6.6c0-1.6-.6-3.2-1.4-4.6-.4 3.4-2.4 5.4-5.2 5.4-2.5 0-4.4-1.6-5.3-4.2-.5 1.2-.9 2.3-.9 3.4a6.6 6.6 0 0 0 6.2 6.6Z"
+      fill="#FF8A5C"
+    />
+  </g>
 </svg>

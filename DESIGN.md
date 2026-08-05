@@ -1,145 +1,157 @@
-# Kinetic Dark — Design System
+# Ember — Design System
 
-> Source: Google Stitch project `Tracker Mobile Design System`  
-> Fonts: Hanken Grotesk (headings/body) + JetBrains Mono (labels/monospace)
+> Warm graphite + ember. A personal habit & gym tracker that feels like a
+> well-used training space: warm dark surfaces, one vivid ember accent, and
+> athletic condensed typography. Mobile-first, dark-only, 44px touch targets.
 
 ---
 
-## Brand & Style
+## Brand
 
-A habit and gym tracker built on a **Kinetic Dark** aesthetic — combining the focus of a high-performance training environment with the streamlined utility of a personal productivity tool. Mobile-first, dark-mode-only, designed for high-speed interaction, often under physical stress (workouts).
+**Ember** — every day relights your streak. The signature element is the
+**ember wick**: a row of 7 small bars on each habit card showing the last
+7 days (lit = done, dim = missed, today gently pulsing).
 
-Modern/SaaS-influenced, card-based layout. Deep background energized by high-vibrancy accents. Every touch target optimized for one-handed use (min 44px).
+Fonts: **Barlow Condensed** (display/stats) + **Archivo** (body) +
+**IBM Plex Mono** (data labels, SET/KG/REPS, timers).
 
 ---
 
 ## Color Palette
 
-### Surface & Background
+### Surfaces (warm charcoal, tonal layering)
 
 | Token | Hex | Usage |
 |-------|-----|-------|
-| `--color-bg` | `#0A0A0A` | Page background ("near-black", OLED-optimized) |
-| `--color-bg-secondary` | `#131313` | Secondary background / surface-dim |
-| `--color-surface` | `#1E1E1E` | Card backgrounds |
-| `--color-surface-elevated` | `#2A2A2A` | Inputs, nested controls, "Add Set" row |
-| `--color-surface-bright` | `#393939` | Bright surface variant |
+| `--color-bg` | `#141210` | Page background |
+| `--color-bg-secondary` | `#1a1713` | Subtle layers, hover scrims |
+| `--color-surface` | `#1f1b16` | Card backgrounds |
+| `--color-surface-variant` | `#241f18` | Icon tiles, field editors |
+| `--color-surface-elevated` | `#272118` | Inputs, add-set rows |
+| `--color-surface-bright` | `#352c21` | Active/interactive surfaces |
 
 ### Text
 
 | Token | Hex | Usage |
 |-------|-----|-------|
-| `--color-text-primary` | `#F9FAFB` | Primary body text |
-| `--color-text-secondary` | `#9CA3AF` | Secondary/muted text |
-| `--color-on-surface` | `#e5e2e1` | Text on surface cards |
-| `--color-on-surface-variant` | `#c7c4d8` | Text on surface (lower emphasis) |
+| `--color-text-primary` | `#f5f0e8` | Primary body text |
+| `--color-text-secondary` | `#a79e91` | Muted text |
+| `--color-text-tertiary` | `#857b6b` | Lowest-emphasis labels |
+| `--color-on-surface` | `#ede6da` | Text on cards |
+| `--color-on-surface-variant` | `#b9b0a1` | Lower emphasis on cards |
 
-### Accent / Brand
-
-| Token | Hex | Usage |
-|-------|-----|-------|
-| `--color-primary` | `#c3c0ff` | Active nav, primary text highlights |
-| `--color-primary-container` | `#4f46e5` | Button fills, "Save", "Start" |
-| `--color-on-primary` | `#1d00a5` | Text on primary fills |
-| `--color-secondary` | `#4edea3` | Success states, checkmarks, completed streaks |
-| `--color-secondary-container` | `#00a572` | Secondary button fills |
-| `--color-tertiary` | `#ffb95f` | Highlights, warnings, timer displays |
-| `--color-tertiary-container` | `#885500` | Tertiary button fills |
-| `--color-destructive` | `#EF4444` | Delete actions, broken streaks |
-| `--color-error` | `#ffb4ab` | Error backgrounds / toasts |
-| `--color-error-container` | `#93000a` | Error container fill |
-
-### Borders & Dividers
+### Accent — Ember
 
 | Token | Hex | Usage |
 |-------|-----|-------|
-| `--color-border` | `#464555` | Card borders, input borders |
-| `--color-outline` | `#918fa1` | Subtle dividers, disabled state outlines |
+| `--color-primary` | `#ff6b35` | Fills, active nav, highlights |
+| `--color-on-primary` | `#1a0d06` | Text on ember fills (near-black) |
+| `--color-primary-container` | `#e8591e` | Deep-ember button fills |
+| `--color-on-primary-container` | `#ffe9de` | Text on container fills |
+| `--color-primary-fixed` | `#ff8a5c` | Hover states |
+
+### Semantic
+
+| Token | Hex | Usage |
+|-------|-----|-------|
+| `--color-secondary` | `#7bd88f` | Success, checkmarks, done wicks |
+| `--color-tertiary` | `#ffc24b` | Rest timers, warnings |
+| `--color-destructive` | `#ff5c5c` | Delete actions |
+| `--color-error` | `#ffb4ab` | Error text/toasts |
+| `--color-error-container` | `#93000a` | Error fills |
+| `--color-border` | `#3b3329` | Card/input borders |
+| `--color-outline` | `#6e6557` | Subtle dividers, disabled |
+
+### Contrast notes
+
+- Primary ember fills carry **near-black text** (`--color-on-primary`) to
+  hold 4.5:1 contrast — never white-on-ember.
+- Body text `#f5f0e8` on `#141210` ≈ 14:1; muted `#a79e91` ≈ 6.5:1.
 
 ---
 
 ## Typography
 
-| Token | Font | Size | Weight | Line Ht | Letter Spacing | Usage |
-|-------|------|------|--------|---------|----------------|-------|
-| `headline-lg` | Hanken Grotesk | 28px | 700 | 34px | -0.02em | Page titles |
-| `headline-lg-mobile` | Hanken Grotesk | 24px | 700 | 30px | — | Mobile page titles |
-| `headline-md` | Hanken Grotesk | 20px | 600 | 26px | — | Section headings |
-| `body-lg` | Hanken Grotesk | 16px | 400 | 24px | — | Body text |
-| `body-sm` | Hanken Grotesk | 14px | 400 | 20px | — | Small body / captions |
-| `label-caps` | JetBrains Mono | 12px | 600 | 16px | 0.05em | Uppercase labels (SET, KG, REPS) |
-| `stat-lg` | Hanken Grotesk | 32px | 800 | 40px | -0.03em | Large stat numbers |
+| Token | Font | Size | Weight | Usage |
+|-------|------|------|--------|-------|
+| `display` | Barlow Condensed | 36px | 700 | Page titles |
+| `headline-lg` | Barlow Condensed | 28px | 700 | Section heroes |
+| `headline` | Barlow Condensed | 20px | 600 | Card titles |
+| `body` | Archivo | 16px | 400 | Body text |
+| `sm` | Archivo | 14px | 400 | Captions |
+| `label` | IBM Plex Mono | 12px | 600 | Uppercase labels (SET, KG, REPS) |
+| `stat` | Barlow Condensed | 32px | 700 | Big numbers (streaks, weight) |
+| `tiny` | Archivo | 11px | 500 | Micro-labels |
 
-CSS variables:
-- `--font-sans`: `"Hanken Grotesk", system-ui, sans-serif`
-- `--font-mono`: `"JetBrains Mono", ui-monospace, monospace`
+CSS variables: `--font-sans` (Archivo), `--font-display` (Barlow Condensed),
+`--font-mono` (IBM Plex Mono). Loaded via `next/font`.
 
 ---
 
-## Shapes & Roundness
+## Shapes & Spacing
 
 | Token | Value | Usage |
 |-------|-------|-------|
-| `--radius-sm` | 0.25rem (4px) | Small badges |
-| `--radius` | 0.5rem (8px) | Buttons, inputs, default |
-| `--radius-md` | 0.75rem (12px) | — |
-| `--radius-lg` | 1rem (16px) | Cards |
-| `--radius-xl` | 1.5rem (24px) | Modals, dialogs |
-| `--radius-full` | 9999px | Pills, streak badges |
+| `--radius-lg` | 12px | Cards |
+| `--radius` | 8px | Buttons, inputs |
+| `--radius-full` | 9999px | Badges, switches, wicks |
+| `--spacing-margin-x` | 16px | Page horizontal margins |
+| `--spacing-gutter` | 12px | Gap between cards |
+| `--spacing-card-padding` | 16px | Card padding |
+| `--spacing-touch` | 44px | Minimum touch target |
+
+Elevation is tonal layering (surface → elevated → bright), plus one
+directional shadow for the fixed bottom bars.
 
 ---
 
-## Spacing
-
-| Token | Value | Usage |
-|-------|-------|-------|
-| `--space-base` | 4px | Base grid unit |
-| `--space-margin-x` | 16px | Horizontal page margins |
-| `--space-gutter` | 12px | Gap between cards |
-| `--space-card-padding` | 16px | Internal card padding |
-| `--space-touch-target` | 44px | Minimum interactive element height |
-
----
-
-## Elevation
-
-Depth achieved through **tonal layering** rather than shadows:
-
-1. `#0A0A0A` — Page floor (background)
-2. `#1E1E1E` — Card surface
-3. `#2A2A2A` — Surface-elevated (inputs, add-set row)
-4. `#393939` — Surface-bright (active/interactive)
-
-Shadows used sparingly — only on FABs and bottom nav bar (`rgba(0,0,0,0.4)` with 12px blur).
-
----
-
-## Component Specs
+## Components
 
 ### Bottom Tab Bar
-- Height: 64px
-- Active tab: `--color-primary` icon + 4px dot indicator below label
-- Inactive tab: `--color-text-secondary` icon/label
-- Icon line weight: 2px
+- 64px, fixed, 1px top border, safe-area inset bottom
+- Active tab: ember icon + label + 4px ember dot; inactive: muted gray
+- Sync status: compact dot at the right edge (amber pulsing = syncing,
+  red = conflicts/failed, gray = offline)
 
 ### Buttons
-- **Primary**: Solid `--color-primary-container` (#4f46e5), text `--color-on-primary` (#1d00a5), bold
-- **Secondary/Outline**: 1px solid `--color-primary`, transparent bg
-- **Success**: Solid `--color-secondary-container`, text near-black
-- **Destructive**: Ghost/text style in `--color-destructive`
-- Border radius: `--radius` (8px)
+- **Primary**: solid `--color-primary` fill, `--color-on-primary` bold text,
+  8px radius, ≥44px tall, `active:scale-[0.98]`
+- **Secondary**: `--color-surface-bright` fill, borderless
+- **Outline**: 1px `--color-border`, transparent bg
+- **Ghost/destructive**: text-only in `--color-destructive`
 
-### Toggle Cards (Habits)
-- Habit name + streak on the left, toggle on the right
-- Card surface: `--color-surface` (#1E1E1E)
-- N/A state: 40% opacity + grayscale
+### Habit Cards
+- Surface card, 1px border, 12px radius
+- Name (Barlow 600) + ember-wick streak row on the right
+- Schema-driven fields render below (switch / stepper / segmented / chips)
 
-### Exercise Table (Workout)
-- Labels (SET, KG, REPS): `label-caps` style (JetBrains Mono, uppercase)
-- "Add Set" row: `--color-surface-elevated` (#2A2A2A) background
-- Superset grouping: 1px dashed `--color-primary` border
+### Set Table (Workout)
+- Column headers SET / KG / REPS in `label` mono caps
+- Set rows in tabular mono numerals
+- Add row: `--color-surface-elevated` background, weight/reps steppers
+- Supersets: 1px dashed ember border panel
 
-### Inputs
-- Numeric: Large centered text with ± stepper buttons flanking
-- Border radius: `--radius` (8px)
-- Background: `--color-surface-elevated` (#2A2A2A)
+### Rest Timer
+- Amber (`--color-tertiary`) mono digits, ±15s buttons, play/pause, skip
+- All controls ≥44px touch targets
+
+### Sheets
+- Bottom sheets slide up 240ms (ease-emphasized), backdrop `rgba(0,0,0,0.6)`,
+  max-w-lg centered, rounded top 16px — used for add-exercise, new-session,
+  and habit/template forms
+
+---
+
+## Motion
+
+- Micro-interactions 150–300ms, `cubic-bezier(0.2, 0, 0, 1)`
+- Press feedback: `scale(0.98)` on tappable cards/buttons
+- Wicks: today's bar gently pulses (ember glow), reduced-motion disabled
+- Skeleton loading per screen (no bare spinners)
+
+## Accessibility
+
+- Visible focus ring (2px ember, offset) via `.ring-focus`
+- `color-scheme: dark` so native date/time pickers render dark
+- Touch targets ≥44px everywhere, tabular numerals in data grids
+- All state conveyed with icon+color, never color alone

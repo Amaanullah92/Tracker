@@ -6,6 +6,7 @@ export type FieldSchema = {
   variant?: 'segmented'
   min?: number
   max?: number
+  step?: number
 }[]
 
 export type Habit = {

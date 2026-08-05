@@ -3,6 +3,7 @@
 import { useMemo } from 'react'
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts'
 import { HabitLog } from '@/lib/types'
+import { chartTokens, ChartEmpty } from './chart-theme'
 
 export function TrendChart({
   logs,
@@ -26,25 +27,33 @@ export function TrendChart({
       .sort((a, b) => a.date.localeCompare(b.date))
   }, [logs, valueKey])
 
-  if (data.length === 0) return <p className="text-xs text-text-secondary py-4 text-center">No data</p>
+  if (data.length === 0) return <ChartEmpty />
 
   return (
-    <div className="h-40">
+    <div
+      className="h-40"
+      role="img"
+      aria-label={`${label} trend chart, ${data.length} data points`}
+    >
       <ResponsiveContainer width="100%" height="100%">
         <LineChart data={data}>
-          <CartesianGrid strokeDasharray="3 3" stroke="#e7e5e4" />
-          <XAxis dataKey="date" tick={{ fontSize: 10 }} axisLine={false} tickLine={false} />
-          <YAxis tick={{ fontSize: 10 }} axisLine={false} tickLine={false} />
+          <CartesianGrid strokeDasharray="3 3" stroke={chartTokens.grid} vertical={false} />
+          <XAxis dataKey="date" tick={chartTokens.tick} axisLine={false} tickLine={false} />
+          <YAxis tick={chartTokens.tick} axisLine={false} tickLine={false} width={36} />
           <Tooltip
-            formatter={(value) => [value, label]}
-            contentStyle={{ fontSize: 12, borderRadius: 8, border: '1px solid #e7e5e4' }}
+            formatter={(value) => [String(value), label]}
+            contentStyle={chartTokens.tooltip.contentStyle}
+            labelStyle={chartTokens.tooltip.labelStyle}
+            itemStyle={chartTokens.tooltip.itemStyle}
+            cursor={chartTokens.tooltip.cursor}
           />
           <Line
             type="monotone"
             dataKey="value"
-            stroke="#166534"
-            strokeWidth={2}
-            dot={{ r: 3, fill: '#166534' }}
+            stroke="var(--color-primary)"
+            strokeWidth={2.5}
+            dot={{ r: 3, fill: 'var(--color-primary)', strokeWidth: 0 }}
+            activeDot={{ r: 5 }}
             connectNulls
           />
         </LineChart>

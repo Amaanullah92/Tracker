@@ -3,11 +3,15 @@
 import { useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import Link from 'next/link'
-import { Mail, Lock } from 'lucide-react'
+import { Mail, Lock, Eye, EyeOff, AlertCircle, CheckCircle2 } from 'lucide-react'
+import { BrandMark } from '@/components/ui/brand-mark'
+import { Input } from '@/components/ui/input'
+import { Button } from '@/components/ui/button'
 
 export default function SignupPage() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
+  const [showPassword, setShowPassword] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
   const [submitted, setSubmitted] = useState(false)
@@ -36,19 +40,20 @@ export default function SignupPage() {
   if (submitted) {
     return (
       <div className="flex min-h-dvh items-center justify-center p-margin-x">
-        <main className="w-full max-w-[480px] flex flex-col items-center text-center mt-12">
-          <div className="w-20 h-20 rounded-full bg-secondary-container/20 flex items-center justify-center mb-6">
-            <span className="text-[48px] text-secondary leading-none">✓</span>
+        <main className="flex w-full max-w-md flex-col items-center text-center">
+          <div className="mb-6 flex h-20 w-20 items-center justify-center rounded-full bg-secondary-container/40">
+            <CheckCircle2 className="h-10 w-10 text-secondary" />
           </div>
-          <h2 className="font-headline-lg-mobile text-headline-lg-mobile text-text-primary mb-2">
+          <h1 className="font-display text-headline-lg text-headline-lg text-text-primary">
             Check your inbox
-          </h2>
-          <p className="font-body-lg text-body-lg text-text-secondary mb-10 max-w-[280px]">
-            We&apos;ve sent a confirmation link to <strong>{email}</strong>. Click the link to activate your account, then sign in.
+          </h1>
+          <p className="mt-2 max-w-[280px] text-sm text-text-secondary">
+            We&apos;ve sent a confirmation link to <strong className="text-text-primary">{email}</strong>.
+            Click the link to activate your account, then sign in.
           </p>
           <Link
             href="/auth/login"
-            className="bg-transparent border border-primary-container text-primary font-headline-md text-headline-md h-12 rounded-lg w-full max-w-[280px] flex items-center justify-center hover:bg-primary-container/10 active:scale-[0.98] transition-all"
+            className="ring-focus mt-8 flex h-14 w-full max-w-[280px] items-center justify-center rounded-lg border border-border bg-transparent font-semibold text-text-primary transition-all duration-150 hover:bg-bg-secondary active:scale-[0.98]"
           >
             Back to Login
           </Link>
@@ -58,77 +63,75 @@ export default function SignupPage() {
   }
 
   return (
-    <div className="flex min-h-dvh items-center justify-center p-margin-x">
-      <main className="w-full max-w-[480px]">
-        <div className="text-center mb-8">
-          <h1 className="font-stat-lg text-[36px] font-bold text-primary tracking-tighter">Habit and Progress Tracker</h1>
-          <p className="font-body-lg text-body-lg text-text-secondary mt-2">Create your account</p>
+    <div className="flex min-h-dvh flex-col items-center justify-center p-margin-x">
+      <main className="w-full max-w-md">
+        <div className="mb-8 flex flex-col items-center text-center">
+          <BrandMark size={52} wordmarkClass="font-display text-[2.5rem] font-bold tracking-tight text-text-primary" />
+          <p className="mt-2 text-sm text-text-secondary">Start your streak today.</p>
         </div>
 
-        <div className="bg-surface p-4 rounded-xl shadow-[0_8px_24px_rgba(0,0,0,0.6)]">
-          <form onSubmit={handleSubmit} className="flex flex-col gap-6">
+        <div className="rounded-xl border border-border bg-surface p-5">
+          <form onSubmit={handleSubmit} className="flex flex-col gap-5">
             {error && (
-              <div className="rounded-lg bg-destructive/10 p-3 text-sm text-destructive">
-                {error}
+              <div
+                role="alert"
+                className="flex items-start gap-2.5 rounded-lg border border-destructive/30 bg-destructive/10 p-3 text-sm text-destructive"
+              >
+                <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
+                <span>{error}</span>
               </div>
             )}
 
-            <div className="flex flex-col gap-2">
-              <label htmlFor="email" className="font-label-caps text-label-caps text-text-secondary uppercase">
-                Email Address
-              </label>
-              <div className="relative">
-                <Mail className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-outline" />
-                <input
-                  id="email"
-                  type="email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  className="w-full bg-surface-elevated text-text-primary font-body-lg text-body-lg border border-transparent rounded-lg h-12 pl-12 pr-4 focus:border-primary-container focus:ring-1 focus:ring-primary-container outline-none transition-colors placeholder:text-outline-variant"
-                  placeholder="user@example.com"
-                  required
-                  autoComplete="email"
-                />
-              </div>
-            </div>
+            <Input
+              id="email"
+              label="Email Address"
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              placeholder="you@example.com"
+              required
+              autoComplete="email"
+              autoCapitalize="none"
+              icon={<Mail className="h-5 w-5" />}
+            />
 
-            <div className="flex flex-col gap-2">
-              <label htmlFor="password" className="font-label-caps text-label-caps text-text-secondary uppercase">
-                Password
-              </label>
+            <div className="space-y-1.5">
               <div className="relative">
-                <Lock className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-outline" />
-                <input
+                <Input
                   id="password"
-                  type="password"
+                  label="Password"
+                  type={showPassword ? 'text' : 'password'}
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className="w-full bg-surface-elevated text-text-primary font-body-lg text-body-lg border border-transparent rounded-lg h-12 pl-12 pr-4 focus:border-primary-container focus:ring-1 focus:ring-primary-container outline-none transition-colors placeholder:text-outline-variant"
                   placeholder="••••••••"
                   required
                   autoComplete="new-password"
                   minLength={6}
+                  icon={<Lock className="h-5 w-5" />}
+                  className="pr-12"
                 />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword((v) => !v)}
+                  aria-label={showPassword ? 'Hide password' : 'Show password'}
+                  className="ring-focus absolute bottom-0 right-0 flex h-12 w-12 items-center justify-center text-text-secondary hover:text-text-primary"
+                >
+                  {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
+                </button>
               </div>
             </div>
 
-            <button
-              type="submit"
-              disabled={loading}
-              className="mt-2 w-full bg-primary-container text-on-primary-container font-headline-md text-headline-md h-12 rounded-lg flex items-center justify-center hover:opacity-90 active:scale-[0.98] transition-all disabled:opacity-50"
-            >
-              {loading ? 'Creating account...' : 'Create Account'}
-            </button>
+            <Button type="submit" size="lg" loading={loading} className="w-full">
+              {loading ? 'Creating account…' : 'Create Account'}
+            </Button>
           </form>
         </div>
 
-        <div className="text-center mt-8">
-          <p className="font-body-sm text-body-sm text-text-secondary">
-            Already have an account?{' '}
-            <Link href="/auth/login" className="text-primary font-headline-md text-sm ml-1 hover:text-primary-fixed transition-colors">
-              Sign in
-            </Link>
-          </p>
+        <div className="mt-6 text-center text-sm text-text-secondary">
+          Already have an account?{' '}
+          <Link href="/auth/login" className="font-semibold text-primary hover:text-primary-fixed">
+            Sign in
+          </Link>
         </div>
       </main>
     </div>

@@ -45,3 +45,20 @@ export function isSundayPKT(dateStr: string): boolean {
 export function isTodayPKT(dateStr: string): boolean {
   return dateStr === todayPKT()
 }
+
+/** Shift a YYYY-MM-DD date string by N days (PKT-aware) */
+export function shiftDatePKT(dateStr: string, days: number): string {
+  const d = new Date(dateStr + 'T12:00:00Z')
+  d.setUTCDate(d.getUTCDate() + days)
+  return new Intl.DateTimeFormat(EN_CA, { timeZone: PKT }).format(d)
+}
+
+/** Human-readable PKT date, e.g. "Wednesday, Aug 5" */
+export function formatDatePKT(dateStr: string, style: 'long' | 'medium' = 'long'): string {
+  return new Intl.DateTimeFormat('en-US', {
+    timeZone: PKT,
+    weekday: style === 'long' ? 'long' : 'short',
+    month: 'short',
+    day: 'numeric',
+  }).format(pktDate(dateStr))
+}

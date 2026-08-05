@@ -48,7 +48,7 @@ export function SyncProvider({ children }: { children: React.ReactNode }) {
     window.addEventListener('offline', handleOffline)
     document.addEventListener('visibilitychange', handleVisible)
 
-    refresh()
+    setTimeout(() => { void refresh() }, 0)
 
     pollRef.current = setInterval(() => {
       if (!document.hidden) refresh()

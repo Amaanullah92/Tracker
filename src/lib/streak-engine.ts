@@ -60,7 +60,7 @@ export function computeStreak(
   return { current: currentRun, longest }
 }
 
-function isLogDone(
+export function isLogDone(
   habit: Pick<Habit, 'name' | 'completion_field' | 'completion_value'>,
   log: Pick<HabitLog, 'auto_marked' | 'values'>,
 ): boolean {

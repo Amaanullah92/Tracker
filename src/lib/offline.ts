@@ -14,7 +14,6 @@ export function shouldQueue(error: unknown): boolean {
 export async function fetchBaseVersion(
   table: string,
   targetKey: Record<string, unknown>,
-  _fallback: string | null,
 ): Promise<string | null | 'UNKNOWN'> {
   try {
     const supabase = createClient()

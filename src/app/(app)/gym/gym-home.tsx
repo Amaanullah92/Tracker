@@ -3,11 +3,18 @@
 import { useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
-import { Dumbbell, Plus, Scale } from 'lucide-react'
-import { pktDayOfWeek } from '@/lib/pkt-utils'
+import { Dumbbell, Plus, Scale, Flame, ChevronRight } from 'lucide-react'
+import { pktDayOfWeek, formatDatePKT } from '@/lib/pkt-utils'
 import { toast } from 'sonner'
 import { shouldQueue, fetchBaseVersion } from '@/lib/offline'
 import { enqueue } from '@/lib/db-queue'
+import { AppHeader } from '@/components/ui/app-header'
+import { Card } from '@/components/ui/card'
+import { Button } from '@/components/ui/button'
+import { Badge } from '@/components/ui/badge'
+import { Stepper } from '@/components/ui/stepper'
+import { Sheet } from '@/components/ui/sheet'
+import { EmptyState } from '@/components/ui/empty-state'
 
 type WorkoutDayWithExercises = {
   id: string
@@ -22,6 +29,8 @@ type WorkoutDayWithExercises = {
     exercises: { name: string; muscle_group: string | null } | null
   }[]
 }
+
+const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']
 
 export function GymHome({
   suggested,
@@ -44,6 +53,7 @@ export function GymHome({
   const [selectedTemplate, setSelectedTemplate] = useState(suggested?.id ?? 'ad-hoc')
   const [sessionDate, setSessionDate] = useState(today)
   const [starting, setStarting] = useState(false)
+  const [savingWeight, setSavingWeight] = useState(false)
   const router = useRouter()
   const supabase = createClient()
 
@@ -85,6 +95,7 @@ export function GymHome({
 
   async function handleSaveWeight() {
     if (!weight) return
+    setSavingWeight(true)
 
     const { error } = await supabase.from('body_weight_logs').upsert(
       { log_date: today, weight_kg: parseFloat(weight) },
@@ -96,7 +107,6 @@ export function GymHome({
         const baseVersion = await fetchBaseVersion(
           'body_weight_logs',
           { log_date: today },
-          bodyWeightToday?.updated_at ?? null,
         )
         await enqueue({
           type: 'body_weight',
@@ -109,167 +119,218 @@ export function GymHome({
       } else {
         toast.error(error.message)
       }
+      setSavingWeight(false)
       return
     }
 
     toast.success('Weight saved')
     setShowWeight(false)
+    setSavingWeight(false)
     router.refresh()
   }
 
-  const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
   const weekday = pktDayOfWeek(today)
 
   return (
-    <div className="mx-auto max-w-lg space-y-4 p-4">
-      <div className="flex items-center justify-between">
-        <h1 className="text-lg font-bold">Gym</h1>
-        <button
-          onClick={() => setShowStart(true)}
-          className="flex items-center gap-1 rounded-lg bg-primary-container px-3 py-2 text-xs font-medium text-white"
-        >
-          <Plus className="h-4 w-4" /> Start Session
-        </button>
-      </div>
+    <div className="mx-auto max-w-lg space-y-3 px-margin-x pb-24">
+      <AppHeader
+        title="Gym"
+        eyebrow={formatDatePKT(today)}
+        right={
+          <Button size="md" onClick={() => setShowStart(true)}>
+            <Plus className="h-4 w-4" /> New
+          </Button>
+        }
+      />
 
-      {showWeight && (
-        <div className="rounded-xl border border-border bg-surface p-4">
-          <div className="flex items-center gap-2 mb-3">
-            <Scale className="h-4 w-4 text-text-secondary" />
-            <span className="text-sm font-medium">Log Body Weight</span>
-          </div>
-          <div className="flex gap-2">
-            <input
-              type="number"
-              step="0.1"
-              value={weight}
-              onChange={(e) => setWeight(e.target.value)}
-              placeholder="Weight (kg)"
-              className="flex-1 min-h-[44px] rounded-lg border border-border bg-surface-elevated px-3 text-sm text-text-primary"
-            />
-            <button
-              onClick={handleSaveWeight}
-              disabled={!weight}
-              className="rounded-lg bg-primary-container px-4 py-2 text-sm font-medium text-white disabled:opacity-40"
-            >
-              Save
-            </button>
-          </div>
-        </div>
-      )}
-
+      {/* Suggested today */}
       {suggested && (
-        <div className="rounded-xl border border-border bg-surface p-4">
-          <div className="flex items-center justify-between mb-2">
-            <h2 className="text-sm font-semibold">Suggested Today</h2>
-            <span className="rounded-full bg-secondary-container/20 px-2 py-0.5 text-xs font-medium text-secondary">
-              {dayNames[weekday]}
+        <Card className="overflow-hidden">
+          <div className="h-1 w-full bg-primary" />
+          <div className="p-4">
+            <div className="mb-2 flex items-center justify-between gap-2">
+              <span className="flex items-center gap-1.5 font-mono text-label text-label uppercase text-text-tertiary">
+                <Flame className="h-4 w-4 text-primary" aria-hidden />
+                Suggested Today
+              </span>
+              <Badge tone="ember" mono>
+                {dayNames[weekday]}
+              </Badge>
+            </div>
+            <p className="font-display text-headline-lg text-headline-lg text-text-primary">
+              {suggested.name}
+            </p>
+            <div className="mt-3 flex flex-wrap gap-1.5">
+              {suggested.exercises.slice(0, 4).map((ex) => (
+                <span
+                  key={ex.id}
+                  className="rounded-md bg-surface-elevated px-2.5 py-1 text-xs text-text-secondary"
+                >
+                  {ex.exercises?.name}
+                </span>
+              ))}
+              {suggested.exercises.length > 4 && (
+                <span className="rounded-md bg-surface-elevated px-2.5 py-1 text-xs text-text-secondary">
+                  +{suggested.exercises.length - 4} more
+                </span>
+              )}
+            </div>
+          </div>
+        </Card>
+      )}
+
+      {/* Body weight */}
+      {showWeight && (
+        <Card className="space-y-2 p-4">
+          <div className="flex items-center justify-between">
+            <span className="flex items-center gap-2 font-display text-headline text-headline text-text-primary">
+              <Scale className="h-4 w-4 text-text-tertiary" aria-hidden />
+              Log Body Weight
             </span>
+            <span className="font-mono text-label text-label uppercase text-text-tertiary">kg</span>
           </div>
-          <p className="text-sm font-medium text-primary">{suggested.name}</p>
-          <div className="mt-2 flex flex-wrap gap-1">
-            {suggested.exercises.slice(0, 4).map((ex) => (
-              <span key={ex.id} className="rounded-md bg-surface-elevated px-2 py-0.5 text-xs text-text-secondary">
-                {ex.exercises?.name}
-              </span>
+          <Stepper
+            label="Body weight (kg)"
+            value={weight}
+            onChange={setWeight}
+            min={20}
+            max={300}
+            step={0.5}
+          />
+          <Button onClick={handleSaveWeight} loading={savingWeight} disabled={!weight} className="w-full">
+            Save Weight
+          </Button>
+        </Card>
+      )}
+
+      {/* Recent sessions */}
+      {recentSessions.length > 0 ? (
+        <div className="pt-1">
+          <h2 className="mb-2 px-1 font-mono text-label text-label uppercase text-text-tertiary">
+            Recent Sessions
+          </h2>
+          <div className="space-y-2">
+            {recentSessions.map((s) => (
+              <button
+                key={s.id}
+                onClick={() => router.push(`/gym/${s.id}`)}
+                className="ring-focus press flex w-full items-center gap-3 rounded-lg border border-border bg-surface px-4 py-3 text-left hover:border-outline"
+              >
+                <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-surface-elevated text-text-secondary">
+                  <Dumbbell className="h-5 w-5" aria-hidden />
+                </span>
+                <span className="min-w-0 flex-1">
+                  <span className="block font-display text-lg font-semibold text-text-primary">
+                    {s.session_date}
+                  </span>
+                  {s.notes && (
+                    <span className="block truncate text-sm text-text-secondary">{s.notes}</span>
+                  )}
+                </span>
+                <ChevronRight className="h-4 w-4 shrink-0 text-outline" aria-hidden />
+              </button>
             ))}
-            {suggested.exercises.length > 4 && (
-              <span className="rounded-md bg-surface-elevated px-2 py-0.5 text-xs text-text-secondary">
-                +{suggested.exercises.length - 4} more
-              </span>
-            )}
           </div>
+        </div>
+      ) : (
+        <div className="pt-2">
+          <EmptyState
+            icon={Dumbbell}
+            title="No sessions yet"
+            description="Start your first workout — it takes less than a minute."
+            action={
+              <Button onClick={() => setShowStart(true)}>
+                <Plus className="h-4 w-4" /> Start Session
+              </Button>
+            }
+          />
         </div>
       )}
 
-      {showStart && (
-        <div className="rounded-xl border border-border bg-surface p-4 space-y-3">
-          <h2 className="text-sm font-semibold">New Session</h2>
-          <div>
-            <label className="mb-1 block font-mono text-xs font-semibold tracking-widest uppercase text-text-secondary">Date</label>
+      {/* New session sheet */}
+      <Sheet
+        open={showStart}
+        onClose={() => setShowStart(false)}
+        title="New Session"
+        footer={
+          <div className="flex gap-2">
+            <Button
+              onClick={handleStartSession}
+              loading={starting}
+              className="flex-1"
+              size="lg"
+            >
+              {starting ? 'Starting…' : 'Start Workout'}
+            </Button>
+            <Button variant="outline" size="lg" onClick={() => setShowStart(false)}>
+              Cancel
+            </Button>
+          </div>
+        }
+      >
+        <div className="space-y-4">
+          <div className="space-y-1.5">
+            <label
+              htmlFor="session-date"
+              className="block font-mono text-label text-label uppercase text-text-secondary"
+            >
+              Date
+            </label>
             <input
+              id="session-date"
               type="date"
               value={sessionDate}
               onChange={(e) => setSessionDate(e.target.value)}
-              className="w-full min-h-[44px] rounded-lg border border-border bg-surface-elevated px-3 text-sm text-text-primary"
+              className="ring-focus h-12 w-full rounded-lg border border-border bg-surface-elevated px-4 text-body text-text-primary outline-none"
             />
           </div>
-          <div>
-            <label className="mb-1 block font-mono text-xs font-semibold tracking-widest uppercase text-text-secondary">Template</label>
-            <div className="space-y-1">
+
+          <div className="space-y-1.5">
+            <span className="block font-mono text-label text-label uppercase text-text-secondary">
+              Template
+            </span>
+            <div className="space-y-1.5" role="radiogroup" aria-label="Workout template">
               <button
+                type="button"
+                role="radio"
+                aria-checked={selectedTemplate === 'ad-hoc'}
                 onClick={() => setSelectedTemplate('ad-hoc')}
-                className={`w-full min-h-[44px] rounded-lg border px-3 text-sm text-left ${
+                className={`ring-focus press flex min-h-12 w-full items-center justify-between rounded-lg border px-4 text-left transition-colors ${
                   selectedTemplate === 'ad-hoc'
-                    ? 'border-primary bg-primary-container/10 text-primary font-medium'
+                    ? 'border-primary bg-primary/10'
                     : 'border-border bg-surface-elevated'
                 }`}
               >
-                Ad-hoc (no template)
+                <span className={selectedTemplate === 'ad-hoc' ? 'font-semibold text-primary' : 'text-text-primary'}>
+                  Ad-hoc
+                </span>
+                <span className="text-xs text-text-secondary">No template</span>
               </button>
               {templates.map((t) => (
                 <button
                   key={t.id}
+                  type="button"
+                  role="radio"
+                  aria-checked={selectedTemplate === t.id}
                   onClick={() => setSelectedTemplate(t.id)}
-                  className={`w-full min-h-[44px] rounded-lg border px-3 text-sm text-left ${
+                  className={`ring-focus press flex min-h-12 w-full items-center justify-between rounded-lg border px-4 text-left transition-colors ${
                     selectedTemplate === t.id
-                      ? 'border-primary bg-primary-container/10 text-primary font-medium'
+                      ? 'border-primary bg-primary/10'
                       : 'border-border bg-surface-elevated'
                   }`}
                 >
-                  {t.name}
+                  <span className={selectedTemplate === t.id ? 'font-semibold text-primary' : 'text-text-primary'}>
+                    {t.name}
+                  </span>
                   {t.scheduled_weekday !== null && (
-                    <span className="ml-2 text-xs text-text-secondary">({dayNames[t.scheduled_weekday]})</span>
+                    <span className="text-xs text-text-secondary">{dayNames[t.scheduled_weekday]}</span>
                   )}
                 </button>
               ))}
             </div>
           </div>
-          <div className="flex gap-2">
-            <button
-              onClick={handleStartSession}
-              disabled={starting}
-              className="flex-1 rounded-lg bg-primary-container px-4 py-2.5 text-sm font-medium text-white disabled:opacity-40"
-            >
-              {starting ? 'Starting...' : 'Start'}
-            </button>
-            <button
-              onClick={() => setShowStart(false)}
-              className="rounded-lg border border-border bg-surface-elevated px-4 py-2.5 text-sm"
-            >
-              Cancel
-            </button>
-          </div>
         </div>
-      )}
-
-      {recentSessions.length > 0 && (
-        <div>
-          <h2 className="mb-2 font-mono text-xs font-semibold tracking-widest uppercase text-text-secondary">Recent Sessions</h2>
-          <div className="space-y-1">
-            {recentSessions.map((s) => (
-              <button
-                key={s.id}
-                onClick={() => router.push(`/gym/${s.id}`)}
-                className="w-full flex items-center gap-3 rounded-lg border border-border bg-surface px-3 py-2.5 text-left"
-              >
-                <Dumbbell className="h-4 w-4 text-text-secondary shrink-0" />
-                <div>
-                  <p className="text-sm font-medium">{s.session_date}</p>
-                  {s.notes && <p className="text-xs text-text-secondary">{s.notes}</p>}
-                </div>
-              </button>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {recentSessions.length === 0 && (
-        <div className="rounded-xl border border-dashed border-border p-8 text-center">
-          <Dumbbell className="mx-auto h-8 w-8 text-text-secondary mb-2" />
-          <p className="text-sm text-text-secondary">No sessions yet. Start your first workout!</p>
-        </div>
-      )}
+      </Sheet>
     </div>
   )
 }

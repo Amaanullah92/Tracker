@@ -1,12 +1,18 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
-import { Plus, Trash2, Timer, Play, Pause, Check, X, SkipForward } from 'lucide-react'
+import { Plus, Trash2, Timer, Play, Pause, Check, SkipForward, Dumbbell, Search } from 'lucide-react'
 import { toast } from 'sonner'
 import { shouldQueue } from '@/lib/offline'
 import { enqueue } from '@/lib/db-queue'
+import { AppHeader } from '@/components/ui/app-header'
+import { Card } from '@/components/ui/card'
+import { Button } from '@/components/ui/button'
+import { Badge } from '@/components/ui/badge'
+import { Sheet } from '@/components/ui/sheet'
+import { EmptyState } from '@/components/ui/empty-state'
 
 type SessionExerciseWithDetails = {
   id: string
@@ -64,6 +70,7 @@ export function SessionPageClient({
   const [notes, setNotes] = useState(session.notes ?? '')
   const [saving, setSaving] = useState(false)
   const [editingTimer, setEditingTimer] = useState<string | null>(null)
+  const [exerciseFilter, setExerciseFilter] = useState('')
   const router = useRouter()
   const supabase = createClient()
 
@@ -168,12 +175,6 @@ export function SessionPageClient({
     }))
   }
 
-  function formatTime(seconds: number): string {
-    const m = Math.floor(seconds / 60)
-    const s = seconds % 60
-    return `${m}:${s.toString().padStart(2, '0')}`
-  }
-
   async function handleAddExercise(exerciseId: string) {
     const maxOrder = exercises.length
     const { data: se, error } = await supabase
@@ -267,118 +268,171 @@ export function SessionPageClient({
     }
   }
 
+  const filteredAvailable = useMemo(() => {
+    const q = exerciseFilter.trim().toLowerCase()
+    if (!q) return available
+    return available.filter((ex) => ex.name.toLowerCase().includes(q))
+  }, [available, exerciseFilter])
+
   return (
     <>
-    <div className="mx-auto max-w-[480px] space-y-3 p-4 pb-24">
-      <div>
-        <h1 className="text-lg font-bold">{session.session_date}</h1>
-        <p className="text-xs text-text-secondary">
-          {session.workout_day_id ? 'Template session' : 'Ad-hoc session'}
-        </p>
+      <div className="mx-auto max-w-lg space-y-3 px-margin-x pb-28">
+        <AppHeader
+          back
+          title={session.session_date}
+          eyebrow={session.workout_day_id ? 'Template Session' : 'Ad-hoc Session'}
+        />
+
+        <textarea
+          value={notes}
+          onChange={(e) => setNotes(e.target.value)}
+          placeholder="Session notes — pumps, fatigue, anything…"
+          rows={2}
+          className="ring-focus w-full resize-none rounded-lg border border-border bg-surface-elevated px-4 py-3 text-body text-text-primary outline-none placeholder:text-text-tertiary"
+        />
+
+        {standalone.map((ex) => (
+          <ExerciseCard
+            key={ex.id}
+            exercise={ex}
+            sets={sets[ex.id] ?? []}
+            newSetValues={newSetValues[ex.id] ?? { weight: '', reps: '' }}
+            prefill={prefill[ex.id] ?? []}
+            timer={timer}
+            editingTimer={editingTimer}
+            onNewSetChange={(vals) =>
+              setNewSetValues((prev) => ({ ...prev, [ex.id]: vals }))
+            }
+            onAddSet={() => addSet(ex.id)}
+            onDeleteSet={(setId) => deleteSet(ex.id, setId)}
+            onStartTimer={(seconds) =>
+              setTimer({ exerciseId: ex.id, remaining: seconds, total: seconds, running: true })
+            }
+            onStopTimer={() =>
+              setTimer((prev) => ({ ...prev, running: false }))
+            }
+            onSkipTimer={skipTimer}
+            onAdjustTimer={adjustTimer}
+            onSetTimerRemaining={setTimerRemaining}
+            onSetEditingTimer={setEditingTimer}
+          />
+        ))}
+
+        {Object.entries(supersetGroups).map(([groupId, group]) => (
+          <div
+            key={groupId}
+            className="relative rounded-lg border border-dashed border-primary bg-surface p-4"
+          >
+            <div className="absolute -top-3 left-4 bg-bg px-1.5">
+              <Badge tone="ember" mono>
+                Superset
+              </Badge>
+            </div>
+            <div className="mt-2 space-y-4">
+              {group.map((ex) => (
+                <div key={ex.id}>
+                  <div className="mb-2 flex items-center justify-between">
+                    <h2 className="font-display text-headline text-headline text-text-primary">
+                      {ex.exercises?.name}
+                    </h2>
+                    {ex.exercises?.muscle_group && (
+                      <Badge>{ex.exercises.muscle_group}</Badge>
+                    )}
+                  </div>
+                  <SetInputPanel
+                    sets={sets[ex.id] ?? []}
+                    newSetValues={newSetValues[ex.id] ?? { weight: '', reps: '' }}
+                    prefill={prefill[ex.id] ?? []}
+                    onNewSetChange={(vals) =>
+                      setNewSetValues((prev) => ({ ...prev, [ex.id]: vals }))
+                    }
+                    onAddSet={() => addSet(ex.id)}
+                    onDeleteSet={(setId) => deleteSet(ex.id, setId)}
+                  />
+                </div>
+              ))}
+            </div>
+          </div>
+        ))}
+
+        <Button
+          variant="outline"
+          onClick={() => setShowAddExercise(true)}
+          className="w-full py-4"
+        >
+          <Plus className="h-4 w-4" /> Add Exercise
+        </Button>
       </div>
 
-      <textarea
-        value={notes}
-        onChange={(e) => setNotes(e.target.value)}
-        placeholder="Session notes..."
-        rows={2}
-        className="w-full rounded-lg border border-border bg-surface-elevated px-3 py-2 text-sm text-text-primary resize-none"
-      />
+      {/* Finish & save bar */}
+      <div className="fixed bottom-16 left-1/2 z-40 w-full max-w-lg -translate-x-1/2 px-4 py-3">
+        <Button
+          onClick={handleSave}
+          size="lg"
+          loading={saving}
+          className="w-full shadow-[0_-4px_24px_rgba(0,0,0,0.35)]"
+        >
+          <Check className="h-5 w-5" /> {saving ? 'Saving…' : 'Finish & Save'}
+        </Button>
+      </div>
 
-      {standalone.map((ex) => (
-        <ExerciseCard
-          key={ex.id}
-          exercise={ex}
-          sets={sets[ex.id] ?? []}
-          newSetValues={newSetValues[ex.id] ?? { weight: '', reps: '' }}
-          prefill={prefill[ex.id] ?? []}
-          timer={timer}
-          editingTimer={editingTimer}
-          onNewSetChange={(vals) =>
-            setNewSetValues((prev) => ({ ...prev, [ex.id]: vals }))
-          }
-          onAddSet={() => addSet(ex.id)}
-          onDeleteSet={(setId) => deleteSet(ex.id, setId)}
-          onStartTimer={(seconds) =>
-            setTimer({ exerciseId: ex.id, remaining: seconds, total: seconds, running: true })
-          }
-          onStopTimer={() =>
-            setTimer((prev) => ({ ...prev, running: false }))
-          }
-          onSkipTimer={skipTimer}
-          onAdjustTimer={adjustTimer}
-          onSetTimerRemaining={setTimerRemaining}
-          onSetEditingTimer={setEditingTimer}
-        />
-      ))}
-
-      {Object.entries(supersetGroups).map(([groupId, group]) => (
-        <div key={groupId} className="relative rounded-xl border border-dashed border-primary p-base">
-          <div className="absolute -top-3 left-4 bg-bg px-2">
-            <span className="font-mono text-xs font-semibold tracking-widest uppercase text-primary bg-primary/10 px-2 py-1 rounded">
-              SUPERSET
-            </span>
-          </div>
-          <div className="space-y-gutter mt-3">
-            {group.map((ex) => (
-              <div key={ex.id}>
-                <p className="mb-2 text-sm font-semibold">{ex.exercises?.name}</p>
-                <SetInputPanel
-                  sets={sets[ex.id] ?? []}
-                  newSetValues={newSetValues[ex.id] ?? { weight: '', reps: '' }}
-                  prefill={prefill[ex.id] ?? []}
-                  timer={timer}
-                  onNewSetChange={(vals) =>
-                    setNewSetValues((prev) => ({ ...prev, [ex.id]: vals }))
-                  }
-                  onAddSet={() => addSet(ex.id)}
-                  onDeleteSet={(setId) => deleteSet(ex.id, setId)}
-                />
-              </div>
-            ))}
-          </div>
-        </div>
-      ))}
-
-      {showAddExercise && (
-        <div className="rounded-xl border border-border bg-surface p-4">
-          <div className="mb-2 flex items-center justify-between">
-            <h2 className="text-sm font-semibold">Add Exercise</h2>
-            <button onClick={() => setShowAddExercise(false)} className="text-text-secondary">
-              <X className="h-4 w-4" />
-            </button>
-          </div>
-          {(available.length === 0 ? [{ id: 'search', name: 'Search exercise library', muscle_group: null }] : available).map((ex) => (
-            <button
-              key={ex.id}
-              onClick={() => handleAddExercise(ex.id)}
-              className="w-full text-left rounded-lg px-3 py-2 text-sm hover:bg-surface-elevated"
-            >
-              {ex.name}
-              {ex.muscle_group && <span className="ml-2 text-xs text-text-secondary">{ex.muscle_group}</span>}
-            </button>
-          ))}
-        </div>
-      )}
-
-      <button
-        onClick={() => setShowAddExercise(true)}
-        className="flex w-full items-center justify-center gap-1 rounded-xl border border-dashed border-border py-3 text-sm text-text-secondary hover:bg-surface-elevated"
+      {/* Add exercise sheet */}
+      <Sheet
+        open={showAddExercise}
+        onClose={() => {
+          setShowAddExercise(false)
+          setExerciseFilter('')
+        }}
+        title="Add Exercise"
       >
-        <Plus className="h-4 w-4" /> Add Exercise
-      </button>
-    </div>
+        <div className="space-y-3">
+          <div className="relative">
+            <Search className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-outline" aria-hidden />
+            <input
+              type="search"
+              value={exerciseFilter}
+              onChange={(e) => setExerciseFilter(e.target.value)}
+              placeholder="Search exercises…"
+              className="ring-focus h-12 w-full rounded-lg border border-border bg-surface-elevated pl-11 pr-4 text-body text-text-primary outline-none placeholder:text-text-tertiary"
+            />
+          </div>
 
-    <div className="fixed bottom-16 left-1/2 z-40 w-full max-w-lg -translate-x-1/2 bg-bg/90 px-4 py-3 shadow-[0_-12px_12px_rgba(0,0,0,0.4)] backdrop-blur-sm">
-      <button
-        onClick={handleSave}
-        disabled={saving}
-        className="flex h-14 w-full items-center justify-center gap-2 rounded-lg bg-primary-container text-sm font-bold text-white disabled:opacity-40"
-      >
-        {saving ? 'Saving...' : 'Finish & Save'}
-      </button>
-    </div>
-  </> )
+          {filteredAvailable.length === 0 ? (
+            <EmptyState
+              icon={Dumbbell}
+              title={available.length === 0 ? 'Library empty' : 'No matches'}
+              description={
+                available.length === 0
+                  ? 'Add exercises to your library under Manage → Exercise Library.'
+                  : 'Try a different search.'
+              }
+            />
+          ) : (
+            <div className="divide-y divide-border">
+              {filteredAvailable.map((ex) => (
+                <button
+                  key={ex.id}
+                  type="button"
+                  onClick={() => handleAddExercise(ex.id)}
+                  className="ring-focus press flex min-h-12 w-full items-center justify-between gap-2 py-2 text-left"
+                >
+                  <span className="min-w-0">
+                    <span className="block truncate font-medium text-text-primary">{ex.name}</span>
+                    {ex.muscle_group && (
+                      <span className="block text-xs text-text-secondary">{ex.muscle_group}</span>
+                    )}
+                  </span>
+                  <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary/15 text-primary">
+                    <Plus className="h-4 w-4" aria-hidden />
+                  </span>
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+      </Sheet>
+    </>
+  )
 }
 
 function ExerciseCard({
@@ -431,29 +485,29 @@ function ExerciseCard({
   }
 
   return (
-    <div className="rounded-lg bg-surface p-4">
-      <div className="mb-4 flex items-center justify-between">
-        <div>
-          <h2 className="text-sm font-semibold">{exercise.exercises?.name}</h2>
-          {exercise.exercises?.muscle_group && (
-            <p className="text-xs text-text-secondary">{exercise.exercises.muscle_group}</p>
-          )}
-        </div>
+    <Card className="space-y-3 p-4">
+      <div className="flex items-center justify-between gap-2">
+        <h2 className="font-display text-headline text-headline text-text-primary">
+          {exercise.exercises?.name}
+        </h2>
+        {exercise.exercises?.muscle_group && <Badge>{exercise.exercises.muscle_group}</Badge>}
       </div>
 
       <SetInputPanel
         sets={sets}
         newSetValues={newSetValues}
         prefill={prefill}
-        timer={timer}
         onNewSetChange={onNewSetChange}
         onAddSet={onAddSet}
         onDeleteSet={onDeleteSet}
       />
 
       {isThisExercise && timer.remaining > 0 && (
-        <div className="mt-3 flex flex-wrap items-center gap-1.5">
-          <Timer className="h-4 w-4 text-tertiary" />
+        <div className="flex items-center justify-between gap-1 rounded-lg bg-surface-elevated px-2 py-1.5">
+          <span className="flex items-center gap-1.5 pl-1.5 font-mono text-label text-label uppercase text-text-tertiary">
+            <Timer className="h-4 w-4 text-tertiary" aria-hidden />
+            Rest
+          </span>
 
           {editingTimer === exercise.id ? (
             <input
@@ -462,55 +516,55 @@ function ExerciseCard({
               onChange={(e) => setInputValue(e.target.value)}
               onBlur={handleEditSubmit}
               onKeyDown={(e) => { if (e.key === 'Enter') handleEditSubmit(); if (e.key === 'Escape') onSetEditingTimer(null) }}
-              className="w-20 rounded-lg border border-border bg-surface-elevated px-2 py-1 text-sm font-mono text-tertiary"
+              className="ring-focus w-20 rounded-lg border border-border bg-surface px-2 py-1 font-mono text-lg text-tertiary outline-none"
               autoFocus
               min={1}
             />
           ) : (
             <button
               onClick={handleEditStart}
-              className={`rounded-lg px-2 py-1 text-sm font-mono transition-colors hover:bg-surface-elevated ${
+              className={`ring-focus press rounded-lg px-2 font-display text-2xl font-bold tabular-nums transition-colors ${
                 timer.running ? 'text-tertiary' : 'text-text-secondary'
               }`}
-              title="Tap to edit"
+              aria-label="Edit rest time"
             >
               {Math.floor(timer.remaining / 60)}:{String(timer.remaining % 60).padStart(2, '0')}
             </button>
           )}
 
-          <button
-            onClick={() => onAdjustTimer(-15)}
-            className="flex h-7 w-7 items-center justify-center rounded-lg text-xs font-bold text-text-secondary hover:bg-surface-elevated"
-            title="-15s"
-          >
-            -15
-          </button>
-
-          <button
-            onClick={timer.running ? onStopTimer : () => onStartTimer(timer.remaining > 0 ? timer.remaining : timer.total)}
-            className="flex h-7 w-7 items-center justify-center rounded-lg text-text-secondary hover:bg-surface-elevated"
-          >
-            {timer.running ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4" />}
-          </button>
-
-          <button
-            onClick={() => onAdjustTimer(15)}
-            className="flex h-7 w-7 items-center justify-center rounded-lg text-xs font-bold text-text-secondary hover:bg-surface-elevated"
-            title="+15s"
-          >
-            +15
-          </button>
-
-          <button
-            onClick={onSkipTimer}
-            className="flex h-7 items-center gap-1 rounded-lg px-2 text-xs text-text-secondary hover:text-destructive"
-            title="Skip rest"
-          >
-            <SkipForward className="h-3.5 w-3.5" /> Skip
-          </button>
+          <div className="flex items-center gap-0.5">
+            <button
+              onClick={() => onAdjustTimer(-15)}
+              className="ring-focus press flex h-11 w-11 items-center justify-center rounded-lg text-sm font-semibold text-text-secondary hover:bg-surface-bright hover:text-text-primary"
+              aria-label="Subtract 15 seconds"
+            >
+              -15
+            </button>
+            <button
+              onClick={timer.running ? onStopTimer : () => onStartTimer(timer.remaining > 0 ? timer.remaining : timer.total)}
+              className="ring-focus press flex h-11 w-11 items-center justify-center rounded-lg text-text-secondary hover:bg-surface-bright hover:text-text-primary"
+              aria-label={timer.running ? 'Pause timer' : 'Start timer'}
+            >
+              {timer.running ? <Pause className="h-5 w-5" /> : <Play className="h-5 w-5" />}
+            </button>
+            <button
+              onClick={() => onAdjustTimer(15)}
+              className="ring-focus press flex h-11 w-11 items-center justify-center rounded-lg text-sm font-semibold text-text-secondary hover:bg-surface-bright hover:text-text-primary"
+              aria-label="Add 15 seconds"
+            >
+              +15
+            </button>
+            <button
+              onClick={onSkipTimer}
+              className="ring-focus press flex h-11 items-center gap-1 rounded-lg px-2 text-sm text-text-secondary hover:text-destructive"
+              aria-label="Skip rest"
+            >
+              <SkipForward className="h-4 w-4" /> Skip
+            </button>
+          </div>
         </div>
       )}
-    </div>
+    </Card>
   )
 }
 
@@ -518,7 +572,6 @@ function SetInputPanel({
   sets,
   newSetValues,
   prefill,
-  timer,
   onNewSetChange,
   onAddSet,
   onDeleteSet,
@@ -526,7 +579,6 @@ function SetInputPanel({
   sets: Set[]
   newSetValues: { weight: string; reps: string }
   prefill: { weight: string; reps: string }[]
-  timer: { exerciseId: string | null; remaining: number; total: number; running: boolean }
   onNewSetChange: (vals: { weight: string; reps: string }) => void
   onAddSet: () => void
   onDeleteSet: (setId: string) => void
@@ -534,21 +586,32 @@ function SetInputPanel({
   return (
     <div>
       {sets.length > 0 && (
-        <div className="mb-2 space-y-2">
-          <div className="grid grid-cols-[2rem_1fr_1fr_2rem] gap-2 px-2 font-mono text-xs font-semibold tracking-widest uppercase text-text-secondary">
-            <span className="text-center">SET</span>
-            <span className="text-center">KG</span>
-            <span className="text-center">REPS</span>
-            <span></span>
+        <div className="mb-2 space-y-1">
+          <div className="grid grid-cols-[2rem_1fr_1fr_2.5rem] items-center gap-2 px-2 font-mono text-label text-label uppercase text-text-tertiary">
+            <span className="text-center">Set</span>
+            <span className="text-center">Kg</span>
+            <span className="text-center">Reps</span>
+            <span aria-hidden />
           </div>
           {sets.map((set) => (
-            <div key={set.id} className="grid grid-cols-[2rem_1fr_1fr_2rem] gap-2 items-center px-2 py-1">
-              <span className="text-center text-sm text-text-secondary">{set.set_number}</span>
-              <span className="text-center text-sm text-text-primary">{set.weight_kg}</span>
-              <span className="text-center text-sm text-text-primary">{set.reps}</span>
+            <div
+              key={set.id}
+              className="grid grid-cols-[2rem_1fr_1fr_2.5rem] items-center gap-2 rounded-lg px-2 py-1"
+            >
+              <span className="text-center font-mono text-sm text-text-tertiary">{set.set_number}</span>
+              <span className="text-center font-mono text-body font-medium tabular-nums text-text-primary">
+                {set.weight_kg}
+              </span>
+              <span className="text-center font-mono text-body font-medium tabular-nums text-text-primary">
+                {set.reps}
+              </span>
               <div className="flex justify-center">
-                <button onClick={() => onDeleteSet(set.id)} className="text-text-secondary hover:text-destructive transition-colors">
-                  <Trash2 className="h-3.5 w-3.5" />
+                <button
+                  onClick={() => onDeleteSet(set.id)}
+                  className="ring-focus press flex h-10 w-10 items-center justify-center rounded-lg text-text-secondary transition-colors hover:bg-destructive/10 hover:text-destructive"
+                  aria-label={`Delete set ${set.set_number}`}
+                >
+                  <Trash2 className="h-4 w-4" />
                 </button>
               </div>
             </div>
@@ -557,11 +620,13 @@ function SetInputPanel({
       )}
 
       {sets.length === 0 && prefill.length > 0 && (
-        <div className="mb-2 rounded-lg bg-surface-elevated/50 p-2">
-          <p className="mb-1 text-xs text-text-secondary">Last session:</p>
+        <div className="mb-2 rounded-lg bg-surface-elevated/60 p-3">
+          <p className="mb-1.5 font-mono text-label text-label uppercase text-text-tertiary">
+            Last session
+          </p>
           <div className="space-y-0.5">
             {prefill.map((p, i) => (
-              <div key={i} className="grid grid-cols-[1.5rem_1fr_1fr] gap-1 text-xs text-text-secondary">
+              <div key={i} className="grid grid-cols-[1.5rem_1fr_1fr] gap-1 font-mono text-sm text-text-secondary">
                 <span>{i + 1}</span>
                 <span>{p.weight} kg</span>
                 <span>{p.reps} reps</span>
@@ -571,32 +636,37 @@ function SetInputPanel({
         </div>
       )}
 
-      <div className="mt-3 grid grid-cols-[2rem_1fr_1fr_2rem] gap-2 items-center bg-surface-elevated p-2 rounded-lg">
-        <span className="text-center text-sm text-text-secondary">{sets.length + 1}</span>
+      <div className="mt-3 grid grid-cols-[2rem_1fr_1fr_2.5rem] items-center gap-2 rounded-lg bg-surface-elevated p-2">
+        <span className="text-center font-mono text-sm text-text-tertiary">{sets.length + 1}</span>
         <input
           type="number"
+          inputMode="decimal"
           step="0.5"
           value={newSetValues.weight}
           onChange={(e) =>
             onNewSetChange({ ...newSetValues, weight: e.target.value })
           }
           placeholder="KG"
-          className="w-full bg-surface text-center text-sm text-text-primary border-none rounded min-h-[44px] focus:ring-1 focus:ring-primary-container appearance-none p-0"
+          aria-label="Weight in kg"
+          className="h-11 w-full appearance-none rounded-md bg-surface text-center font-mono text-body text-text-primary outline-none placeholder:text-text-tertiary focus:ring-2 focus:ring-primary/60 [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
         />
         <input
           type="number"
+          inputMode="numeric"
           value={newSetValues.reps}
           onChange={(e) =>
             onNewSetChange({ ...newSetValues, reps: e.target.value })
           }
           placeholder="REPS"
-          className="w-full bg-surface text-center text-sm text-text-primary border-none rounded min-h-[44px] focus:ring-1 focus:ring-primary-container appearance-none p-0"
+          aria-label="Reps"
+          className="h-11 w-full appearance-none rounded-md bg-surface text-center font-mono text-body text-text-primary outline-none placeholder:text-text-tertiary focus:ring-2 focus:ring-primary/60 [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
         />
         <div className="flex justify-center">
           <button
             onClick={onAddSet}
             disabled={!newSetValues.weight || !newSetValues.reps}
-            className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/20 text-primary hover:bg-primary/30 transition-colors disabled:opacity-30"
+            className="ring-focus press flex h-11 w-11 items-center justify-center rounded-full bg-primary/20 text-primary transition-colors hover:bg-primary/30 disabled:pointer-events-none disabled:opacity-30"
+            aria-label="Add set"
           >
             <Plus className="h-5 w-5" />
           </button>

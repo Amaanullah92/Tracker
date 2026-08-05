@@ -1,9 +1,10 @@
 'use client'
 
 import Link from 'next/link'
-import { ChevronRight, Brain, Dumbbell, FileText } from 'lucide-react'
+import { ChevronRight, Brain, Dumbbell, FileText, LogOut } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
+import { AppHeader } from '@/components/ui/app-header'
 
 export default function ManagePage() {
   const router = useRouter()
@@ -15,71 +16,64 @@ export default function ManagePage() {
     router.refresh()
   }
 
+  const sections = [
+    {
+      href: '/manage/habits',
+      title: 'Habits',
+      subtitle: 'Edit trackers & rules',
+      icon: Brain,
+      tileClass: 'bg-primary/15 text-primary',
+      hoverClass: 'group-hover:border-primary/40',
+    },
+    {
+      href: '/manage/exercises',
+      title: 'Exercise Library',
+      subtitle: 'Custom movements & history',
+      icon: Dumbbell,
+      tileClass: 'bg-secondary-container/40 text-secondary',
+      hoverClass: 'group-hover:border-secondary/40',
+    },
+    {
+      href: '/manage/templates',
+      title: 'Workout Templates',
+      subtitle: 'Pre-built training routines',
+      icon: FileText,
+      tileClass: 'bg-tertiary-container/40 text-tertiary',
+      hoverClass: 'group-hover:border-tertiary/40',
+    },
+  ]
+
   return (
-    <div className="mx-auto max-w-[480px] px-margin-x pt-4">
-      <div className="mb-6">
-        <h2 className="font-headline-lg text-headline-lg text-text-primary">Manage</h2>
-        <p className="font-body-sm text-body-sm text-text-secondary mt-1">Configure your tracker ecosystem.</p>
+    <div className="mx-auto max-w-lg space-y-3 px-margin-x pb-24">
+      <AppHeader title="Manage" eyebrow="Configure your tracker" />
+
+      <div className="space-y-3">
+        {sections.map(({ href, title, subtitle, icon: Icon, tileClass, hoverClass }) => (
+          <Link
+            key={href}
+            href={href}
+            className={`ring-focus press group flex items-center justify-between rounded-lg border border-border bg-surface p-4 transition-colors hover:bg-surface-variant ${hoverClass}`}
+          >
+            <div className="flex items-center gap-4">
+              <div className={`flex h-11 w-11 items-center justify-center rounded-lg ${tileClass}`}>
+                <Icon className="h-5 w-5" aria-hidden />
+              </div>
+              <div>
+                <p className="font-display text-headline text-headline text-text-primary">{title}</p>
+                <p className="text-sm text-text-secondary">{subtitle}</p>
+              </div>
+            </div>
+            <ChevronRight className="h-5 w-5 text-outline transition-colors group-hover:text-text-primary" aria-hidden />
+          </Link>
+        ))}
       </div>
 
-      <div className="flex flex-col gap-4">
-        <Link
-          href="/manage/habits"
-          className="group relative flex items-center justify-between overflow-hidden rounded-xl bg-surface p-4 transition-colors hover:bg-surface-elevated active:scale-[0.98]"
-        >
-          <div className="absolute inset-0 bg-gradient-to-r from-primary/5 to-transparent opacity-0 transition-opacity group-hover:opacity-100 pointer-events-none" />
-          <div className="relative z-10 flex items-center gap-4">
-            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-surface-variant text-primary">
-              <Brain className="h-5 w-5" />
-            </div>
-            <div>
-              <p className="font-headline-md text-headline-md text-text-primary">Habits</p>
-              <p className="font-body-sm text-body-sm text-text-secondary">Edit trackers & rules</p>
-            </div>
-          </div>
-          <ChevronRight className="relative z-10 h-5 w-5 text-outline transition-colors group-hover:text-primary" />
-        </Link>
-
-        <Link
-          href="/manage/exercises"
-          className="group relative flex items-center justify-between overflow-hidden rounded-xl bg-surface p-4 transition-colors hover:bg-surface-elevated active:scale-[0.98]"
-        >
-          <div className="absolute inset-0 bg-gradient-to-r from-secondary/5 to-transparent opacity-0 transition-opacity group-hover:opacity-100 pointer-events-none" />
-          <div className="relative z-10 flex items-center gap-4">
-            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-surface-variant text-secondary">
-              <Dumbbell className="h-5 w-5" />
-            </div>
-            <div>
-              <p className="font-headline-md text-headline-md text-text-primary">Exercise Library</p>
-              <p className="font-body-sm text-body-sm text-text-secondary">Custom movements & history</p>
-            </div>
-          </div>
-          <ChevronRight className="relative z-10 h-5 w-5 text-outline transition-colors group-hover:text-secondary" />
-        </Link>
-
-        <Link
-          href="/manage/templates"
-          className="group relative flex items-center justify-between overflow-hidden rounded-xl bg-surface p-4 transition-colors hover:bg-surface-elevated active:scale-[0.98]"
-        >
-          <div className="absolute inset-0 bg-gradient-to-r from-tertiary/5 to-transparent opacity-0 transition-opacity group-hover:opacity-100 pointer-events-none" />
-          <div className="relative z-10 flex items-center gap-4">
-            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-surface-variant text-tertiary">
-              <FileText className="h-5 w-5" />
-            </div>
-            <div>
-              <p className="font-headline-md text-headline-md text-text-primary">Workout Templates</p>
-              <p className="font-body-sm text-body-sm text-text-secondary">Pre-built training routines</p>
-            </div>
-          </div>
-          <ChevronRight className="relative z-10 h-5 w-5 text-outline transition-colors group-hover:text-tertiary" />
-        </Link>
-      </div>
-
-      <div className="mt-12">
+      <div className="pt-8">
         <button
           onClick={handleSignOut}
-          className="flex h-14 w-full items-center justify-center rounded-xl border-2 border-destructive bg-transparent font-headline-md text-headline-md text-destructive transition-colors hover:bg-destructive/10 active:bg-destructive/20"
+          className="ring-focus press flex h-14 w-full items-center justify-center gap-2 rounded-lg border border-destructive/40 bg-transparent font-semibold text-destructive transition-colors hover:bg-destructive/10"
         >
+          <LogOut className="h-4 w-4" aria-hidden />
           Sign Out
         </button>
       </div>

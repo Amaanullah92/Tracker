@@ -4,6 +4,7 @@ import { useMemo } from 'react'
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts'
 import { HabitLog } from '@/lib/types'
 import { weekStartPKT } from '@/lib/pkt-utils'
+import { chartTokens, ChartEmpty } from './chart-theme'
 
 export function CompletionChart({
   logs,
@@ -42,19 +43,27 @@ export function CompletionChart({
       }))
   }, [logs, completionField, streakDirection])
 
-  if (data.length === 0) return <p className="text-xs text-text-secondary py-4 text-center">No data</p>
+  if (data.length === 0) return <ChartEmpty />
 
   return (
-    <div className="h-32">
+    <div className="h-32" role="img" aria-label="Weekly completion rate chart">
       <ResponsiveContainer width="100%" height="100%">
         <BarChart data={data}>
-          <XAxis dataKey="week" tick={{ fontSize: 10 }} axisLine={false} tickLine={false} />
-          <YAxis domain={[0, 100]} tick={{ fontSize: 10 }} axisLine={false} tickLine={false} />
+          <XAxis dataKey="week" tick={chartTokens.tick} axisLine={false} tickLine={false} />
+          <YAxis domain={[0, 100]} tick={chartTokens.tick} axisLine={false} tickLine={false} width={36} />
           <Tooltip
             formatter={(value) => [`${value}%`, 'Rate']}
-            contentStyle={{ fontSize: 12, borderRadius: 8, border: '1px solid #e7e5e4' }}
+            contentStyle={chartTokens.tooltip.contentStyle}
+            labelStyle={chartTokens.tooltip.labelStyle}
+            itemStyle={chartTokens.tooltip.itemStyle}
+            cursor={chartTokens.tooltip.cursor}
           />
-          <Bar dataKey="rate" fill="#166534" radius={[4, 4, 0, 0]} />
+          <Bar
+            dataKey="rate"
+            fill="var(--color-secondary)"
+            radius={[4, 4, 0, 0]}
+            maxBarSize={28}
+          />
         </BarChart>
       </ResponsiveContainer>
     </div>

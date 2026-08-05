@@ -5,11 +5,23 @@ import { Habit, HabitLog } from '@/lib/types'
 import { HabitLogForm } from '@/components/habits/habit-log-form'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
-import { ChevronLeft, ChevronRight } from 'lucide-react'
-import { todayPKT, pktDayOfWeek, isSundayPKT, isTodayPKT } from '@/lib/pkt-utils'
+import { ChevronLeft, ChevronRight, CalendarDays, Flame } from 'lucide-react'
+import {
+  pktDayOfWeek,
+  isSundayPKT,
+  isTodayPKT,
+  shiftDatePKT,
+  formatDatePKT,
+} from '@/lib/pkt-utils'
 import { toast } from 'sonner'
 import { shouldQueue, fetchBaseVersion } from '@/lib/offline'
 import { enqueue } from '@/lib/db-queue'
+import { AppHeader } from '@/components/ui/app-header'
+import { Card } from '@/components/ui/card'
+import { Stepper } from '@/components/ui/stepper'
+import { Button } from '@/components/ui/button'
+import { Badge } from '@/components/ui/badge'
+import { EmberWick, WickDay } from '@/components/ui/ember-wick'
 
 const PRAYERS = ['fajr', 'zuhr', 'asr', 'maghrib', 'isha'] as const
 type Prayer = (typeof PRAYERS)[number]
@@ -41,26 +53,20 @@ function isGym(habit: Habit) {
   return habit.name === 'Gym'
 }
 
-function shiftDate(dateStr: string, days: number): string {
-  const d = new Date(dateStr + 'T12:00:00Z')
-  d.setUTCDate(d.getUTCDate() + days)
-  return new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Karachi' }).format(d)
-}
-
 export function TodayClient({
   habits,
   logsMap,
+  wickDays,
   logDate,
   userId,
   bodyWeight,
-  bodyWeightUpdatedAt,
 }: {
   habits: Habit[]
   logsMap: Map<string, HabitLog>
+  wickDays: Map<string, WickDay[]>
   logDate: string
   userId: string
   bodyWeight: number | null
-  bodyWeightUpdatedAt: string | null
 }) {
   const [saving, setSaving] = useState(false)
   const [bodyWeightInput, setBodyWeightInput] = useState(
@@ -172,7 +178,6 @@ export function TodayClient({
           const baseVersion = await fetchBaseVersion(
             'body_weight_logs',
             { user_id: userId, log_date: logDate },
-            bodyWeightUpdatedAt,
           )
           await enqueue({
             type: 'body_weight',
@@ -196,131 +201,178 @@ export function TodayClient({
     } else if (queuedCount > 0) {
       toast.info(`${queuedCount} ${queuedCount === 1 ? 'entry' : 'entries'} saved offline`)
     } else {
-      toast.success('Saved')
+      toast.success('Day saved')
       router.refresh()
     }
   }
 
+  const dirtyCount = dirty.size
+
   return (
-    <div className="mx-auto max-w-lg space-y-3 p-4">
-      <div className="flex items-center justify-between">
-        <h1 className="text-lg font-bold">Today</h1>
-        <span className="text-xs text-text-secondary">
-          {isTodayPKT(logDate) ? 'Today' : logDate}
-        </span>
-      </div>
-
-      <div className="flex items-center justify-between rounded-lg border border-border bg-surface px-3 py-2">
-        <button
-          type="button"
-          onClick={() => navigateDate(shiftDate(logDate, -1))}
-          className="flex h-11 w-11 items-center justify-center rounded-lg text-text-secondary hover:bg-bg-secondary"
-          aria-label="Previous day"
-        >
-          <ChevronLeft className="h-5 w-5" />
-        </button>
-
-        <input
-          type="date"
-          value={logDate}
-          onChange={(e) => navigateDate(e.target.value)}
-          className="bg-transparent text-center text-sm font-medium text-text-primary focus:outline-none"
+    <>
+      <div className="mx-auto max-w-lg space-y-3 px-margin-x pb-28">
+        <AppHeader
+          title="Today"
+          eyebrow={formatDatePKT(logDate)}
+          right={
+            <span className="flex items-center gap-1.5 font-mono text-label text-label uppercase text-text-tertiary">
+              <Flame className="h-4 w-4 text-primary" aria-hidden />
+              {isTodayPKT(logDate) ? 'Today' : logDate}
+            </span>
+          }
         />
 
-        <button
-          type="button"
-          onClick={() => navigateDate(shiftDate(logDate, 1))}
-          disabled={isTodayPKT(logDate)}
-          className="flex h-11 w-11 items-center justify-center rounded-lg text-text-secondary hover:bg-bg-secondary disabled:opacity-40"
-          aria-label="Next day"
-        >
-          <ChevronRight className="h-5 w-5" />
-        </button>
-      </div>
+        {/* Date navigator */}
+        <Card className="flex items-center justify-between px-1.5 py-1">
+          <button
+            type="button"
+            onClick={() => navigateDate(shiftDatePKT(logDate, -1))}
+            className="ring-focus press flex h-11 w-11 items-center justify-center rounded-lg text-text-secondary hover:bg-bg-secondary hover:text-text-primary"
+            aria-label="Previous day"
+          >
+            <ChevronLeft className="h-5 w-5" />
+          </button>
 
-      <div className="rounded-xl border border-border bg-surface p-4">
-        <h2 className="mb-3 text-sm font-semibold">Body Weight</h2>
-        <div className="flex items-center gap-3">
-          <input
-            type="number"
-            step="0.1"
-            min="20"
-            max="300"
+          <label className="flex flex-col items-center">
+            <span className="flex items-center gap-1.5 font-display text-lg font-semibold text-text-primary">
+              <CalendarDays className="h-4 w-4 text-text-tertiary" aria-hidden />
+              {formatDatePKT(logDate, 'medium')}
+            </span>
+            <input
+              type="date"
+              value={logDate}
+              onChange={(e) => navigateDate(e.target.value)}
+              className="w-36 cursor-pointer bg-transparent text-center font-mono text-xs text-text-tertiary outline-none"
+              aria-label="Select date"
+            />
+          </label>
+
+          <button
+            type="button"
+            onClick={() => navigateDate(shiftDatePKT(logDate, 1))}
+            disabled={isTodayPKT(logDate)}
+            className="ring-focus press flex h-11 w-11 items-center justify-center rounded-lg text-text-secondary hover:bg-bg-secondary hover:text-text-primary disabled:pointer-events-none disabled:opacity-30"
+            aria-label="Next day"
+          >
+            <ChevronRight className="h-5 w-5" />
+          </button>
+        </Card>
+
+        {/* Body weight */}
+        <Card className="space-y-2 p-4">
+          <div className="flex items-center justify-between">
+            <h2 className="font-display text-headline text-headline text-text-primary">
+              Body Weight
+            </h2>
+            <span className="font-mono text-label text-label uppercase text-text-tertiary">kg</span>
+          </div>
+          <Stepper
+            label="Body weight (kg)"
             value={bodyWeightInput}
-            onChange={(e) => setBodyWeightInput(e.target.value)}
-            placeholder="Weight (kg)"
-            className="w-full rounded-lg border border-border bg-surface-elevated px-3 py-2 text-sm text-text-primary focus:outline-none focus:ring-2 focus:ring-primary-container"
+            onChange={setBodyWeightInput}
+            min={20}
+            max={300}
+            step={0.5}
           />
-          <span className="text-sm text-text-secondary">kg</span>
+        </Card>
+
+        {/* Habits */}
+        <div className="space-y-3">
+          {habits.map((habit) => {
+            if (isNamaz(habit)) {
+              const prayers = (values[habit.id] as { prayers?: Record<Prayer, Record<string, unknown>> } | undefined)
+                ?.prayers ?? emptyPrayers()
+              const namazSchema = habit.field_schema.map((f) =>
+                f.type === 'select' && f.options && f.options.length <= 3
+                  ? { ...f, variant: 'segmented' as const }
+                  : f,
+              )
+              return (
+                <Card key={habit.id} className="p-4">
+                  <div className="mb-3 flex items-start justify-between gap-3">
+                    <h2 className="font-display text-headline text-headline text-text-primary">
+                      {habit.name}
+                    </h2>
+                    <EmberWick
+                      days={wickDays.get(habit.id) ?? []}
+                      label={`${habit.name}: last 7 days`}
+                    />
+                  </div>
+                  <div className="divide-y divide-border">
+                    {PRAYERS.map((prayer) => (
+                      <div key={prayer} className="py-3 first:pt-0 last:pb-0">
+                        <p className="mb-2 font-mono text-label text-label uppercase text-text-secondary">
+                          {getPrayerLabel(prayer, logDate)}
+                        </p>
+                        <HabitLogForm
+                          schema={namazSchema}
+                          values={prayers[prayer] ?? {}}
+                          onChange={(v) => handlePrayerChange(habit.id, prayer, v)}
+                        />
+                      </div>
+                    ))}
+                  </div>
+                </Card>
+              )
+            }
+
+            if (isGym(habit) && isSundayPKT(logDate)) {
+              return (
+                <Card key={habit.id} className="p-4 opacity-50">
+                  <div className="flex items-center justify-between">
+                    <h2 className="font-display text-headline text-headline text-text-primary">
+                      {habit.name}
+                    </h2>
+                    <Badge tone="neutral" mono>
+                      Rest Day
+                    </Badge>
+                  </div>
+                  <p className="mt-1 text-sm text-text-secondary">
+                    N/A — Sunday (rest day)
+                  </p>
+                </Card>
+              )
+            }
+
+            return (
+              <Card key={habit.id} className="space-y-3 p-4">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <h2 className="font-display text-headline text-headline text-text-primary">
+                      {habit.name}
+                    </h2>
+                    {habit.description && (
+                      <p className="mt-0.5 text-sm text-text-secondary">{habit.description}</p>
+                    )}
+                  </div>
+                  <EmberWick
+                    days={wickDays.get(habit.id) ?? []}
+                    label={`${habit.name}: last 7 days`}
+                  />
+                </div>
+                <HabitLogForm
+                  schema={habit.field_schema}
+                  values={values[habit.id] ?? {}}
+                  onChange={(v) => handleChange(habit.id, v)}
+                />
+              </Card>
+            )
+          })}
         </div>
       </div>
 
-      <div className="space-y-3">
-        {habits.map((habit) => {
-          if (isNamaz(habit)) {
-            const prayers = (values[habit.id] as { prayers?: Record<Prayer, Record<string, unknown>> } | undefined)
-              ?.prayers ?? emptyPrayers()
-            const namazSchema = habit.field_schema.map((f) =>
-              f.type === 'select' && f.options && f.options.length <= 3
-                ? { ...f, variant: 'segmented' as const }
-                : f,
-            )
-            return (
-              <div key={habit.id} className="rounded-xl border border-border bg-surface p-4">
-                <h2 className="mb-3 text-sm font-semibold">{habit.name}</h2>
-                <div className="space-y-4">
-                  {PRAYERS.map((prayer) => (
-                    <div key={prayer}>
-                      <h3 className="mb-2 text-xs font-medium text-text-secondary">
-                        {getPrayerLabel(prayer, logDate)}
-                      </h3>
-                      <HabitLogForm
-                        schema={namazSchema}
-                        values={prayers[prayer] ?? {}}
-                        onChange={(v) => handlePrayerChange(habit.id, prayer, v)}
-                      />
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )
-          }
-
-          if (isGym(habit) && isSundayPKT(logDate)) {
-            return (
-              <div key={habit.id} className="rounded-xl border border-border bg-surface p-4 opacity-40">
-                <h2 className="mb-3 text-sm font-semibold">{habit.name}</h2>
-                <p className="text-sm text-text-secondary">N/A — Sunday (rest day)</p>
-              </div>
-            )
-          }
-
-          return (
-            <div
-              key={habit.id}
-              className="rounded-xl border border-border bg-surface p-4"
-            >
-              <h2 className="mb-3 text-sm font-semibold">{habit.name}</h2>
-              {habit.description && (
-                <p className="mb-2 text-xs text-text-secondary">{habit.description}</p>
-              )}
-              <HabitLogForm
-                schema={habit.field_schema}
-                values={values[habit.id] ?? {}}
-                onChange={(v) => handleChange(habit.id, v)}
-              />
-            </div>
-          )
-        })}
+      {/* Sticky save bar */}
+      <div className="fixed bottom-16 left-1/2 z-40 w-full max-w-lg -translate-x-1/2 px-4 py-3">
+        <Button
+          onClick={handleSave}
+          size="lg"
+          loading={saving}
+          disabled={dirtyCount === 0 && !bodyWeightInput}
+          className="w-full shadow-[0_-4px_24px_rgba(0,0,0,0.35)]"
+        >
+          {saving ? 'Saving…' : dirtyCount > 0 ? `Save Day${dirtyCount > 1 ? ` (${dirtyCount})` : ''}` : 'Save Day'}
+        </Button>
       </div>
-
-      <button
-        onClick={handleSave}
-        disabled={saving}
-        className="w-full rounded-lg bg-primary-container px-4 py-3 text-sm font-medium text-white disabled:opacity-40"
-      >
-        {saving ? 'Saving...' : 'Save Day'}
-      </button>
-    </div>
+    </>
   )
 }

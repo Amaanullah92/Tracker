@@ -19,28 +19,32 @@ function SyncDot() {
   if (status === 'idle') return null
 
   const actionable = status === 'conflicts'
+  const dotClass =
+    status === 'syncing'
+      ? 'bg-tertiary animate-pulse'
+      : status === 'conflicts' || status === 'failed'
+        ? 'bg-destructive'
+        : 'bg-text-tertiary'
 
   return (
-    <div className="absolute right-5 top-1/2 z-10 -translate-y-1/2">
+    <div className="absolute right-3 top-2 z-10">
       <button
         onClick={actionable ? () => router.push('/sync/conflicts') : undefined}
         disabled={!actionable}
-        className={`flex items-center justify-center rounded-full p-1 outline-none transition-colors ${
-          actionable ? 'cursor-pointer hover:bg-bg-secondary' : 'cursor-default'
+        className={`ring-focus flex h-9 min-w-9 items-center justify-center rounded-full transition-colors ${
+          actionable ? 'cursor-pointer bg-destructive/10 hover:bg-destructive/20' : 'cursor-default bg-transparent'
         }`}
-        aria-label={`Sync status: ${status}`}
+        aria-label={
+          status === 'syncing'
+            ? 'Syncing…'
+            : status === 'conflicts'
+              ? 'Sync conflicts — tap to review'
+              : status === 'failed'
+                ? 'Sync failed'
+                : 'Offline'
+        }
       >
-        <span
-          className={`block h-3 w-3 rounded-full ${
-            status === 'syncing'
-              ? 'bg-blue-500 animate-pulse'
-              : status === 'conflicts'
-                ? 'bg-amber-500'
-                : status === 'failed'
-                  ? 'bg-red-500'
-                  : 'bg-gray-500'
-          }`}
-        />
+        <span className={`block h-3 w-3 rounded-full ring-2 ring-bg ${dotClass}`} />
       </button>
     </div>
   )
@@ -50,7 +54,7 @@ export function BottomNav() {
   const pathname = usePathname()
 
   return (
-    <nav className="fixed bottom-0 left-0 right-0 z-50 border-t border-border bg-surface pb-[env(safe-area-inset-bottom)] relative">
+    <nav className="fixed bottom-0 left-0 right-0 z-40 border-t border-border bg-bg/95 pb-[env(safe-area-inset-bottom)] backdrop-blur-sm">
       <div className="mx-auto flex h-16 max-w-lg items-center px-2">
         <div className="flex flex-1 items-center justify-around">
           {navItems.map(({ href, label, icon: Icon }) => {
@@ -59,14 +63,17 @@ export function BottomNav() {
               <Link
                 key={href}
                 href={href}
-                className={`relative flex flex-col items-center justify-center gap-0.5 px-4 py-1 text-xs transition-colors ${
+                aria-current={isActive ? 'page' : undefined}
+                className={`ring-focus relative flex min-h-11 min-w-14 flex-col items-center justify-center gap-0.5 rounded-lg px-3 transition-colors duration-150 active:scale-[0.96] ${
                   isActive ? 'text-primary' : 'text-text-secondary hover:text-text-primary'
                 }`}
               >
-                <Icon className="h-5 w-5" />
-                <span className="font-medium">{label}</span>
+                <Icon className="h-[22px] w-[22px]" strokeWidth={2} />
+                <span className="font-display text-[13px] font-semibold uppercase tracking-wide">
+                  {label}
+                </span>
                 {isActive && (
-                  <span className="absolute -top-0.5 left-1/2 h-1 w-6 -translate-x-1/2 rounded-full bg-primary" />
+                  <span className="absolute bottom-0.5 left-1/2 h-1 w-1 -translate-x-1/2 rounded-full bg-primary" />
                 )}
               </Link>
             )

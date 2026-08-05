@@ -4,8 +4,7 @@ import { useMemo } from 'react'
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Legend } from 'recharts'
 import { HabitLog } from '@/lib/types'
 import { weekStartPKT } from '@/lib/pkt-utils'
-
-const COLORS = ['#166534', '#22c55e', '#86efac', '#d97706', '#fbbf24']
+import { chartTokens, ChartEmpty } from './chart-theme'
 
 export function DistributionChart({
   logs,
@@ -40,23 +39,37 @@ export function DistributionChart({
       }))
   }, [logs, selectKey, options])
 
-  if (data.length === 0) return <p className="text-xs text-text-secondary py-4 text-center">No data</p>
+  if (data.length === 0) return <ChartEmpty />
 
   return (
-    <div className="h-40">
+    <div
+      className="h-40"
+      role="img"
+      aria-label={`Distribution of ${options.join(', ')} per week`}
+    >
       <ResponsiveContainer width="100%" height="100%">
         <BarChart data={data}>
-          <XAxis dataKey="week" tick={{ fontSize: 10 }} axisLine={false} tickLine={false} />
-          <YAxis tick={{ fontSize: 10 }} axisLine={false} tickLine={false} />
-          <Tooltip contentStyle={{ fontSize: 12, borderRadius: 8, border: '1px solid #e7e5e4' }} />
-          <Legend wrapperStyle={{ fontSize: 10 }} />
+          <XAxis dataKey="week" tick={chartTokens.tick} axisLine={false} tickLine={false} />
+          <YAxis tick={chartTokens.tick} axisLine={false} tickLine={false} width={36} />
+          <Tooltip
+            contentStyle={chartTokens.tooltip.contentStyle}
+            labelStyle={chartTokens.tooltip.labelStyle}
+            itemStyle={chartTokens.tooltip.itemStyle}
+            cursor={chartTokens.tooltip.cursor}
+          />
+          <Legend
+            iconType="circle"
+            iconSize={8}
+            wrapperStyle={{ fontSize: 11, color: 'var(--color-text-secondary)', paddingTop: 8 }}
+          />
           {options.map((option, i) => (
             <Bar
               key={option}
               dataKey={option}
               stackId="a"
-              fill={COLORS[i % COLORS.length]}
-              radius={i === options.length - 1 ? [4, 4, 0, 0] : 0}
+              fill={chartTokens.palette[i % chartTokens.palette.length]}
+              radius={i === options.length - 1 ? [3, 3, 0, 0] : 0}
+              maxBarSize={28}
             />
           ))}
         </BarChart>

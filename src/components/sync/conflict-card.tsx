@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect } from 'react'
 import { type PendingWrite } from '@/lib/db-queue'
 import {
   fetchConflictServerData,
@@ -10,6 +10,8 @@ import {
   type ConflictField,
 } from '@/lib/conflict-utils'
 import { AlertCircle } from 'lucide-react'
+import { Button } from '@/components/ui/button'
+
 
 const TYPE_LABELS: Record<PendingWrite['type'], string> = {
   habit_log: 'Habit Log',
@@ -30,17 +32,18 @@ export function ConflictCard({
   const [resolutions, setResolutions] = useState<Record<string, 'mine' | 'server'>>({})
   const [saving, setSaving] = useState(false)
 
-  const load = useCallback(async () => {
-    setLoading(true)
-    const data = await fetchConflictServerData(item)
-    setServerData(data)
-    setFields(extractFields(item, data))
-    setLoading(false)
-  }, [item])
-
   useEffect(() => {
-    load()
-  }, [load])
+    let ignore = false
+    async function start() {
+      const data = await fetchConflictServerData(item)
+      if (ignore) return
+      setServerData(data)
+      setFields(extractFields(item, data))
+      setLoading(false)
+    }
+    start()
+    return () => { ignore = true }
+  }, [item])
 
   function setResolution(key: string, choice: 'mine' | 'server') {
     setResolutions((prev) => ({ ...prev, [key]: choice }))
@@ -74,7 +77,7 @@ export function ConflictCard({
 
   if (loading) {
     return (
-      <div className="rounded-xl border border-border bg-surface p-4">
+      <div className="rounded-lg border border-border bg-surface p-4">
         <p className="text-sm text-text-secondary">Loading conflict data...</p>
       </div>
     )
@@ -82,7 +85,7 @@ export function ConflictCard({
 
   if (fields.length === 0) {
     return (
-      <div className="rounded-xl border border-border bg-surface p-4">
+      <div className="rounded-lg border border-border bg-surface p-4">
         <p className="text-sm text-text-secondary">No conflicting fields found.</p>
       </div>
     )
@@ -92,7 +95,7 @@ export function ConflictCard({
   const targetInfo = formatTargetInfo(item)
 
   return (
-    <div className="rounded-xl border border-border bg-surface p-4">
+    <div className="rounded-lg border border-border bg-surface p-4">
       <div className="mb-3 flex items-start gap-2">
         <AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-destructive" />
         <div className="min-w-0">
@@ -145,33 +148,35 @@ export function ConflictCard({
       </div>
 
       <div className="mt-4 flex gap-2">
-        <button
+        <Button
+          variant="outline"
           onClick={() => handleAcceptAll('mine')}
           disabled={saving}
-          className="flex-1 rounded-lg border border-border bg-surface-elevated px-3 py-2 text-xs font-medium text-text-primary hover:bg-surface disabled:opacity-40"
+          className="flex-1"
         >
           Accept all mine
-        </button>
-        <button
+        </Button>
+        <Button
+          variant="outline"
           onClick={() => handleAcceptAll('server')}
           disabled={saving}
-          className="flex-1 rounded-lg border border-border bg-surface-elevated px-3 py-2 text-xs font-medium text-text-primary hover:bg-surface disabled:opacity-40"
+          className="flex-1"
         >
           Accept all server
-        </button>
+        </Button>
       </div>
 
-      <button
+      <Button
         onClick={handleSave}
         disabled={!allResolved || saving}
-        className="mt-2 w-full rounded-lg bg-primary-container px-4 py-2.5 text-sm font-medium text-white disabled:opacity-40"
+        className="mt-2 w-full"
       >
         {saving
           ? 'Saving...'
           : allResolved
             ? 'Save this record'
             : `Resolve ${unresolvedCount} more field${unresolvedCount === 1 ? '' : 's'}...`}
-      </button>
+      </Button>
     </div>
   )
 }

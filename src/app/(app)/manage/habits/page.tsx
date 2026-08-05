@@ -5,6 +5,13 @@ import { createClient } from '@/lib/supabase/client'
 import { FieldSchema, Habit } from '@/lib/types'
 import { Plus, Pencil, X, Trash2, ChevronUp, ChevronDown } from 'lucide-react'
 import { toast } from 'sonner'
+import { AppHeader } from '@/components/ui/app-header'
+import { Card } from '@/components/ui/card'
+import { Button } from '@/components/ui/button'
+import { Badge } from '@/components/ui/badge'
+import { Input } from '@/components/ui/input'
+import { SegmentedControl } from '@/components/ui/segmented-control'
+import { EmptyState } from '@/components/ui/empty-state'
 
 export default function ManageHabitsPage() {
   const [habits, setHabits] = useState<Habit[]>([])
@@ -20,7 +27,19 @@ export default function ManageHabitsPage() {
     if (data) setHabits(data)
   }
 
-  useEffect(() => { load() }, [])
+  useEffect(() => {
+    let ignore = false
+    async function start() {
+      const { data } = await supabase
+        .from('habits')
+        .select('*')
+        .order('sort_order')
+      if (ignore || !data) return
+      setHabits(data)
+    }
+    start()
+    return () => { ignore = true }
+  }, [])
 
   async function handleCreate(form: FormData) {
     const name = form.get('name') as string
@@ -85,7 +104,8 @@ export default function ManageHabitsPage() {
     load()
   }
 
-  async function handleDelete(id: string) {
+  async function handleDelete(id: string, name: string) {
+    if (!window.confirm(`Delete "${name}"? This removes its history too.`)) return
     const { error } = await supabase.from('habits').delete().eq('id', id)
     if (error) {
       toast.error(error.message)
@@ -96,22 +116,36 @@ export default function ManageHabitsPage() {
   }
 
   return (
-    <div className="mx-auto max-w-[480px] px-margin-x space-y-4 pt-4">
-      <div className="flex items-center justify-between">
-        <h2 className="font-headline-md text-headline-md text-text-primary">Manage Habits</h2>
-        <button
-          onClick={() => setShowCreate(true)}
-          className="flex items-center gap-1 rounded-lg bg-primary px-3 py-2 text-xs font-medium text-white"
-        >
-          <Plus className="h-4 w-4" /> New
-        </button>
-      </div>
+    <div className="mx-auto max-w-lg space-y-3 px-margin-x pb-24">
+      <AppHeader
+        back
+        title="Habits"
+        eyebrow="Trackers & rules"
+        right={
+          <Button onClick={() => setShowCreate(true)}>
+            <Plus className="h-4 w-4" /> New
+          </Button>
+        }
+      />
 
       {showCreate && (
         <HabitForm
           onSubmit={handleCreate}
           onCancel={() => setShowCreate(false)}
-          submitLabel="Create"
+          submitLabel="Create Habit"
+        />
+      )}
+
+      {habits.length === 0 && !showCreate && (
+        <EmptyState
+          icon={Plus}
+          title="No habits yet"
+          description="Create your first tracker — toggle, number, or select fields."
+          action={
+            <Button onClick={() => setShowCreate(true)}>
+              <Plus className="h-4 w-4" /> New Habit
+            </Button>
+          }
         />
       )}
 
@@ -123,56 +157,70 @@ export default function ManageHabitsPage() {
               habit={habit}
               onSubmit={(f) => handleUpdate(habit.id, f)}
               onCancel={() => setEditingId(null)}
-              submitLabel="Save"
+              submitLabel="Save Changes"
             />
           )
         }
 
         return (
-          <div key={habit.id} className="rounded-xl bg-surface p-4">
-            <div className="flex items-start justify-between">
+          <Card key={habit.id} className="p-4">
+            <div className="flex items-start justify-between gap-2">
               <div className="min-w-0 flex-1">
-                <h2 className="text-sm font-semibold">{habit.name}</h2>
+                <h2 className="font-display text-headline text-headline text-text-primary">
+                  {habit.name}
+                </h2>
                 {habit.description && (
-                  <p className="mt-0.5 text-xs text-text-secondary">{habit.description}</p>
+                  <p className="mt-0.5 text-sm text-text-secondary">{habit.description}</p>
                 )}
-                <div className="mt-1.5 flex flex-wrap gap-1.5">
-                  <span className="rounded-md bg-background px-1.5 py-0.5 text-xs text-text-secondary">
-                    {habit.streak_direction}
-                  </span>
+                <div className="mt-2 flex flex-wrap gap-1.5">
+                  <Badge mono>
+                    {habit.streak_direction === 'inverse' ? 'Inverse' : 'Positive'}
+                  </Badge>
                   {habit.completion_field && (
-                    <span className="rounded-md bg-background px-1.5 py-0.5 text-xs text-text-secondary">
+                    <Badge mono tone="ember">
                       {habit.completion_field}={habit.completion_value ?? 'on'}
-                    </span>
+                    </Badge>
                   )}
                   {!habit.is_active && (
-                    <span className="rounded-md bg-destructive/10 px-1.5 py-0.5 text-xs text-destructive">
-                      inactive
-                    </span>
+                    <Badge tone="danger">Inactive</Badge>
                   )}
                 </div>
               </div>
-              <div className="flex items-center gap-1 ml-3 shrink-0">
+              <div className="flex shrink-0 items-center gap-0.5">
                 <button
                   onClick={() => setEditingId(habit.id)}
-                  className="rounded-lg p-1.5 text-text-secondary hover:bg-background"
+                  aria-label={`Edit ${habit.name}`}
+                  className="ring-focus press flex h-11 w-11 items-center justify-center rounded-lg text-text-secondary hover:bg-bg-secondary hover:text-text-primary"
                 >
                   <Pencil className="h-4 w-4" />
                 </button>
                 <button
-                  onClick={() => handleDelete(habit.id)}
-                  className="rounded-lg p-1.5 text-text-secondary hover:text-destructive"
+                  onClick={() => handleDelete(habit.id, habit.name)}
+                  aria-label={`Delete ${habit.name}`}
+                  className="ring-focus press flex h-11 w-11 items-center justify-center rounded-lg text-text-secondary hover:bg-destructive/10 hover:text-destructive"
                 >
-                  <X className="h-4 w-4" />
+                  <Trash2 className="h-4 w-4" />
                 </button>
               </div>
             </div>
-          </div>
+          </Card>
         )
       })}
     </div>
   )
 }
+
+const TYPE_OPTIONS = [
+  { value: 'toggle', label: 'Toggle' },
+  { value: 'number', label: 'Number' },
+  { value: 'select', label: 'Select' },
+  { value: 'text', label: 'Text' },
+  { value: 'time', label: 'Time' },
+]
+
+const TYPE_LABELS: Record<string, string> = Object.fromEntries(
+  TYPE_OPTIONS.map((t) => [t.value, t.label]),
+)
 
 function HabitForm({
   habit,
@@ -268,127 +316,118 @@ function HabitForm({
     setEditorOptions(editorOptions.filter((o) => o !== opt))
   }
 
-  const TYPE_LABELS: Record<string, string> = {
-    toggle: 'Toggle',
-    number: 'Number',
-    select: 'Select',
-    text: 'Text',
-    time: 'Time',
-  }
-
   return (
-    <form action={onSubmit} className="rounded-xl bg-surface p-4 space-y-3">
+    <form action={onSubmit} className="space-y-4 rounded-lg border border-border bg-surface p-4">
       <input ref={hiddenSchemaRef} name="field_schema" type="hidden" defaultValue={JSON.stringify(fields)} />
 
-      <input
+      <Input
         name="name"
+        label="Habit Name"
         defaultValue={habit?.name}
-        placeholder="Habit name"
-        className="w-full min-h-[44px] rounded-lg border border-border bg-background px-3 text-sm"
+        placeholder="e.g. Read 20 pages"
         required
       />
 
-      <input
+      <Input
         name="description"
+        label="Description"
         defaultValue={habit?.description ?? ''}
-        placeholder="Description (optional)"
-        className="w-full min-h-[44px] rounded-lg border border-border bg-background px-3 text-sm"
+        placeholder="Optional — what does this habit look like?"
       />
 
       {/* Fields section */}
-      <div>
-        <label className="mb-2 block text-xs font-medium text-text-secondary">Fields</label>
+      <div className="space-y-2">
+        <span className="block font-mono text-label text-label uppercase text-text-secondary">
+          Fields
+        </span>
 
-        <div className="space-y-1.5">
-          {fields.map((field, i) => (
-            <div key={field.key + i} className="flex items-center gap-1.5 rounded-lg bg-background px-2 py-1.5">
-              <div className="flex flex-col items-center gap-px">
-                <button
-                  type="button"
-                  onClick={() => moveField(i, -1)}
-                  disabled={i === 0}
-                  className="flex h-4 w-4 items-center justify-center text-text-secondary disabled:opacity-30 hover:text-text-primary"
-                >
-                  <ChevronUp className="h-3.5 w-3.5" />
-                </button>
-                <button
-                  type="button"
-                  onClick={() => moveField(i, 1)}
-                  disabled={i === fields.length - 1}
-                  className="flex h-4 w-4 items-center justify-center text-text-secondary disabled:opacity-30 hover:text-text-primary"
-                >
-                  <ChevronDown className="h-3.5 w-3.5" />
-                </button>
-              </div>
-              <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium">{field.label}</p>
-                <div className="mt-0.5 flex flex-wrap items-center gap-1.5">
-                  <span className="rounded-full bg-primary/10 px-1.5 py-0.5 text-[10px] font-medium text-primary">
-                    {TYPE_LABELS[field.type]}
-                  </span>
-                  {field.type === 'select' && field.options && field.options.length > 0 && (
-                    <div className="flex flex-wrap gap-1">
-                      {field.options.map((opt) => (
-                        <span key={opt} className="rounded-md bg-background px-1.5 py-0.5 text-[10px] text-text-secondary">
-                          {opt}
-                        </span>
-                      ))}
-                    </div>
-                  )}
+        {fields.length > 0 && (
+          <div className="space-y-1.5">
+            {fields.map((field, i) => (
+              <div key={field.key + i} className="flex items-center gap-1.5 rounded-lg bg-surface-elevated px-2 py-2">
+                <div className="flex flex-col items-center gap-px">
+                  <button
+                    type="button"
+                    onClick={() => moveField(i, -1)}
+                    disabled={i === 0}
+                    aria-label={`Move ${field.label} up`}
+                    className="ring-focus flex h-7 w-7 items-center justify-center rounded text-text-secondary disabled:pointer-events-none disabled:opacity-30 hover:text-text-primary"
+                  >
+                    <ChevronUp className="h-3.5 w-3.5" />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => moveField(i, 1)}
+                    disabled={i === fields.length - 1}
+                    aria-label={`Move ${field.label} down`}
+                    className="ring-focus flex h-7 w-7 items-center justify-center rounded text-text-secondary disabled:pointer-events-none disabled:opacity-30 hover:text-text-primary"
+                  >
+                    <ChevronDown className="h-3.5 w-3.5" />
+                  </button>
                 </div>
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-sm font-medium text-text-primary">{field.label}</p>
+                  <div className="mt-0.5 flex flex-wrap items-center gap-1.5">
+                    <Badge tone="ember" mono>
+                      {TYPE_LABELS[field.type]}
+                    </Badge>
+                    {field.type === 'select' && field.options && field.options.length > 0 && (
+                      <div className="flex flex-wrap gap-1">
+                        {field.options.map((opt) => (
+                          <span key={opt} className="rounded bg-surface-bright px-1.5 py-0.5 text-[10px] text-text-secondary">
+                            {opt}
+                          </span>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => openEditFieldEditor(i)}
+                  aria-label={`Edit field ${field.label}`}
+                  className="ring-focus press flex h-10 w-10 items-center justify-center rounded-lg text-text-secondary hover:bg-surface-bright hover:text-text-primary"
+                >
+                  <Pencil className="h-4 w-4" />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => deleteField(i)}
+                  aria-label={`Delete field ${field.label}`}
+                  className="ring-focus press flex h-10 w-10 items-center justify-center rounded-lg text-text-secondary hover:text-destructive"
+                >
+                  <Trash2 className="h-4 w-4" />
+                </button>
               </div>
-              <button
-                type="button"
-                onClick={() => openEditFieldEditor(i)}
-                className="flex h-8 w-8 items-center justify-center rounded-lg text-text-secondary hover:bg-surface"
-              >
-                <Pencil className="h-3.5 w-3.5" />
-              </button>
-              <button
-                type="button"
-                onClick={() => deleteField(i)}
-                className="flex h-8 w-8 items-center justify-center rounded-lg text-text-secondary hover:text-destructive"
-              >
-                <Trash2 className="h-3.5 w-3.5" />
-              </button>
-            </div>
-          ))}
-        </div>
+            ))}
+          </div>
+        )}
 
         {showFieldEditor && (
-          <div className="mt-2 rounded-lg bg-surface-variant p-3 space-y-2.5">
-            <input
-              type="text"
+          <div className="space-y-3 rounded-lg border border-border bg-surface-variant p-3">
+            <Input
+              label="Field Label"
               value={editorLabel}
               onChange={(e) => setEditorLabel(e.target.value)}
-              placeholder="Field label"
-              className="w-full min-h-[44px] rounded-lg border border-border bg-surface px-3 text-sm"
+              placeholder="e.g. Status"
               autoFocus
             />
 
-            <div>
-              <label className="mb-1 text-xs text-text-secondary">Type</label>
-              <div className="flex gap-1">
-                {(['toggle', 'number', 'select', 'text', 'time'] as const).map((t) => (
-                  <button
-                    key={t}
-                    type="button"
-                    onClick={() => setEditorType(t)}
-                    className={`min-h-[36px] flex-1 rounded-lg text-xs font-medium transition-colors ${
-                      editorType === t
-                        ? 'bg-primary text-white'
-                        : 'border border-border bg-surface text-text-secondary hover:text-text-primary'
-                    }`}
-                  >
-                    {TYPE_LABELS[t]}
-                  </button>
-                ))}
-              </div>
+            <div className="space-y-1.5">
+              <span className="block font-mono text-label text-label uppercase text-text-secondary">Type</span>
+              <SegmentedControl
+                options={TYPE_OPTIONS}
+                value={editorType}
+                onChange={(v) => setEditorType(v as FieldSchema[0]['type'])}
+                ariaLabel="Field type"
+              />
             </div>
 
             {editorType === 'select' && (
-              <div>
-                <label className="mb-1 text-xs text-text-secondary">Options</label>
+              <div className="space-y-1.5">
+                <span className="block font-mono text-label text-label uppercase text-text-secondary">
+                  Options
+                </span>
                 <div className="flex gap-1.5">
                   <input
                     type="text"
@@ -396,23 +435,29 @@ function HabitForm({
                     onChange={(e) => setEditorOptionInput(e.target.value)}
                     onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); addOption() } }}
                     placeholder="Type and press Enter"
-                    className="flex-1 min-h-[44px] rounded-lg border border-border bg-surface px-3 text-sm"
+                    className="ring-focus h-12 flex-1 rounded-lg border border-border bg-surface-elevated px-3 text-body text-text-primary outline-none placeholder:text-text-tertiary"
                   />
-                  <button
+                  <Button
                     type="button"
                     onClick={addOption}
                     disabled={!editorOptionInput.trim()}
-                    className="flex min-h-[44px] w-[44px] items-center justify-center rounded-lg bg-primary text-white disabled:opacity-50"
+                    className="h-12 w-12 px-0"
+                    aria-label="Add option"
                   >
                     <Plus className="h-4 w-4" />
-                  </button>
+                  </Button>
                 </div>
                 {editorOptions.length > 0 && (
-                  <div className="mt-1.5 flex flex-wrap gap-1.5">
+                  <div className="flex flex-wrap gap-1.5">
                     {editorOptions.map((opt) => (
-                      <span key={opt} className="inline-flex items-center gap-1 rounded-full bg-surface px-2 py-1 text-xs">
+                      <span key={opt} className="inline-flex items-center gap-1 rounded-full bg-surface-bright px-2.5 py-1 text-xs text-text-primary">
                         {opt}
-                        <button type="button" onClick={() => removeOption(opt)} className="text-text-secondary hover:text-destructive">
+                        <button
+                          type="button"
+                          onClick={() => removeOption(opt)}
+                          className="ring-focus flex h-5 w-5 items-center justify-center rounded-full text-text-secondary hover:text-destructive"
+                          aria-label={`Remove option ${opt}`}
+                        >
                           <X className="h-3 w-3" />
                         </button>
                       </span>
@@ -423,93 +468,83 @@ function HabitForm({
             )}
 
             <div className="flex gap-2 pt-1">
-              <button
-                type="button"
-                onClick={saveField}
-                disabled={!editorLabel.trim()}
-                className="rounded-lg bg-primary px-4 py-2 text-xs font-medium text-white disabled:opacity-50"
-              >
+              <Button type="button" onClick={saveField} disabled={!editorLabel.trim()} size="sm">
                 Save Field
-              </button>
-              <button type="button" onClick={closeEditor} className="rounded-lg border border-border px-4 py-2 text-xs font-medium">
+              </Button>
+              <Button type="button" variant="outline" size="sm" onClick={closeEditor}>
                 Cancel
-              </button>
+              </Button>
             </div>
           </div>
         )}
 
-        <button
+        <Button
           type="button"
+          variant="outline"
           onClick={openNewFieldEditor}
-          className="mt-2 flex items-center gap-1 rounded-lg border border-border px-3 py-2 text-xs text-text-secondary hover:bg-background"
+          className="w-full"
         >
-          <Plus className="h-3.5 w-3.5" /> Add Field
-        </button>
+          <Plus className="h-4 w-4" /> Add Field
+        </Button>
       </div>
 
       <div className="grid grid-cols-2 gap-3">
-        <div>
-          <label className="text-xs text-text-secondary">Completion field</label>
-          <input
-            name="completion_field"
-            defaultValue={habit?.completion_field ?? ''}
-            placeholder="e.g. status"
-            className="mt-1 w-full min-h-[44px] rounded-lg border border-border bg-background px-3 text-sm"
-          />
-        </div>
-        <div>
-          <label className="text-xs text-text-secondary">Completion value</label>
-          <input
-            name="completion_value"
-            defaultValue={habit?.completion_value ?? ''}
-            placeholder="e.g. Prayed"
-            className="mt-1 w-full min-h-[44px] rounded-lg border border-border bg-background px-3 text-sm"
-          />
-        </div>
+        <Input
+          name="completion_field"
+          label="Completion Field"
+          defaultValue={habit?.completion_field ?? ''}
+          placeholder="e.g. status"
+        />
+        <Input
+          name="completion_value"
+          label="Completion Value"
+          defaultValue={habit?.completion_value ?? ''}
+          placeholder="e.g. Prayed"
+        />
       </div>
 
       <div className="grid grid-cols-2 gap-3">
-        <div>
-          <label className="text-xs text-text-secondary">Streak direction</label>
+        <div className="space-y-1.5">
+          <label htmlFor="streak_direction" className="block font-mono text-label text-label uppercase text-text-secondary">
+            Streak Direction
+          </label>
           <select
+            id="streak_direction"
             name="streak_direction"
             defaultValue={habit?.streak_direction ?? 'positive'}
-            className="mt-1 w-full min-h-[44px] rounded-lg border border-border bg-background px-3 text-sm"
+            className="ring-focus h-12 w-full rounded-lg border border-border bg-surface-elevated px-3 text-body text-text-primary outline-none"
           >
             <option value="positive">Positive</option>
             <option value="inverse">Inverse</option>
           </select>
         </div>
-        <div>
-          <label className="text-xs text-text-secondary">Sort order</label>
-          <input
-            name="sort_order"
-            type="number"
-            defaultValue={habit?.sort_order ?? 1}
-            className="mt-1 w-full min-h-[44px] rounded-lg border border-border bg-background px-3 text-sm"
-          />
-        </div>
+        <Input
+          name="sort_order"
+          label="Sort Order"
+          type="number"
+          defaultValue={habit?.sort_order ?? 1}
+        />
       </div>
 
       {habit && (
-        <label className="flex items-center gap-2 text-sm">
+        <label className="flex min-h-11 items-center gap-2.5 text-sm text-text-primary">
           <input
             name="is_active"
             type="checkbox"
             defaultChecked={habit.is_active}
-            className="h-4 w-4 rounded border-border"
+            className="h-5 w-5 accent-primary"
           />
           Active
         </label>
       )}
 
       <div className="flex gap-2">
-        <button type="submit" className="rounded-lg bg-primary px-4 py-2 text-sm font-medium text-white">
+        <Button type="submit" className="flex-1">
           {submitLabel}
-        </button>
-        <button type="button" onClick={onCancel} className="rounded-lg border border-border px-4 py-2 text-sm">
+        </Button>
+        <Button type="button" variant="outline" onClick={onCancel}>
           Cancel
-        </button>
+        </Button>
       </div>
     </form>
   )

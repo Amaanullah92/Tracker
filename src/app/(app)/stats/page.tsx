@@ -44,10 +44,13 @@ export default async function StatsPage() {
   }
 
   // Enrich session exercises with exercise names
-  const exerciseMap = new Map((exercises ?? []).map((e) => [e.id, e.name]))
-  const enrichedSessions = (sessions ?? []).map((s: any) => ({
+  const exerciseMap = new Map<string, string>()
+  for (const e of exercises ?? []) {
+    exerciseMap.set(e.id, e.name)
+  }
+  const enrichedSessions = (sessions ?? []).map((s) => ({
     ...s,
-    session_exercises: (s.session_exercises ?? []).map((se: any) => ({
+    session_exercises: (s.session_exercises ?? []).map((se) => ({
       ...se,
       exercise_name: exerciseMap.get(se.exercise_id) ?? null,
     })),
@@ -56,7 +59,6 @@ export default async function StatsPage() {
   return (
     <StatsClient
       habits={habits ?? []}
-      exercises={exercises ?? []}
       bodyWeightLogs={bodyWeightLogs ?? []}
       workoutSessions={enrichedSessions}
       workoutDayNames={workoutDayNames}
